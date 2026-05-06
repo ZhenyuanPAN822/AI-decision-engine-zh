@@ -1,0 +1,2874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta 字et="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 决策引擎</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface2: #f1f5f9;
+    --border: #e2e8f0;
+    --border2: #cbd5e1;
+    --text: #0f172a;
+    --text2: #64748b;
+    --text3: #94a3b8;
+    --accent: #4f46e5;
+    --accent2: #6366f1;
+    --accent-light: #eef2ff;
+    --green: #059669;
+    --green-light: #ecfdf5;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --amber: #d97706;
+    --amber-light: #fffbeb;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; line-height: 1.7; font-size: 16px;
+  }
+  .container { max-width: 840px; margin: 0 auto; padding: 48px 28px; }
+
+  /* ── Header ── */
+  .header { text-align: center; margin-bottom: 40px; }
+  .header h1 {
+    font-size: 32px; font-weight: 800; margin-bottom: 6px;
+    color: var(--accent);
+  }
+  .header p { color: var(--text2); font-size: 16px; }
+
+  /* ── Config Panel ── */
+  .config-panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    margin-bottom: 32px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .config-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 24px; cursor: pointer; user-select: none;
+    font-weight: 600; font-size: 15px; color: var(--text2);
+  }
+  .config-header:hover { background: var(--surface2); }
+  .config-toggle { font-size: 12px; transition: transform .2s; }
+  .config-toggle.open { transform: rotate(180deg); }
+  .config-body { padding: 0 24px 24px; display: none; }
+  .config-body.open { display: block; }
+
+  .provider-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    padding: 10px 18px; border-radius: 10px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text2); cursor: pointer;
+    font-size: 14px; font-weight: 600; transition: all .15s;
+  }
+  .pill:hover { border-color: var(--accent); color: var(--accent); }
+  .pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* ── Progress ── */
+  .progress-wrap { margin-bottom: 40px; }
+  .step-label { display:flex; justify-content:space-between; margin-bottom:10px; font-size:13px; color:var(--text3); font-weight:500; }
+  .progress { display: flex; gap: 8px; }
+  .progress-dot { flex:1; height:6px; border-radius:3px; background:var(--border); transition:background .3s; }
+  .progress-dot.active { background: var(--accent); }
+  .progress-dot.done { background: var(--green); }
+
+  /* ── Steps ── */
+  .step { display:none; }
+  .step.active { display:block; animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  .step h2 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+  .step .sub { color:var(--text2); font-size:15px; margin-bottom:28px; line-height:1.6; }
+
+  /* ── Form ── */
+  .field { margin-bottom: 24px; }
+  .field label { display:block; font-size:15px; font-weight:600; margin-bottom:8px; color:var(--text); }
+  .hint { font-size:13px; color:var(--text2); margin-bottom:8px; line-height:1.5; }
+  .examples { font-size:13px; color:var(--text3); margin-bottom:10px; font-style:italic; line-height:1.5; }
+  input[type="text"], input[type="number"], input[type="password"], textarea, select {
+    width:100%; padding:12px 16px; background:var(--surface); border:1.5px solid var(--border);
+    border-radius:10px; color:var(--text); font-size:16px; outline:none; transition:border-color .2s;
+    font-family: inherit; box-shadow: var(--shadow);
+  }
+  input:focus, textarea:focus, select:focus { border-color:var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+  textarea { resize:vertical; min-height:100px; }
+
+  /* ── Cards ── */
+  .option-card {
+    background:var(--surface); border:1.5px solid var(--border); border-radius:14px;
+    padding:24px; margin-bottom:18px; box-shadow:var(--shadow);
+  }
+  .option-card .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .option-card .card-num { font-size:14px; font-weight:700; color:var(--accent); }
+  .remove-btn {
+    background:none; border:none; color:var(--red); cursor:pointer;
+    font-size:13px; padding:6px 10px; border-radius:8px; font-weight:500;
+  }
+  .remove-btn:hover { background:var(--red-light); }
+
+  /* ── Tags ── */
+  .tag-input-row { display:flex; gap:10px; margin-bottom:14px; }
+  .tag-input-row input { flex:1; }
+  .tag-input-row button { padding:12px 18px; white-space:nowrap; }
+  .tags { display:flex; flex-wrap:wrap; gap:8px; }
+  .tag {
+    display:inline-flex; align-items:center; gap:6px; padding:8px 14px;
+    background:var(--accent-light); border:1.5px solid rgba(79,70,229,0.25);
+    border-radius:20px; font-size:14px; color:var(--accent); font-weight:500;
+  }
+  .tag .x { cursor:pointer; color:var(--text3); font-size:18px; line-height:1; }
+  .tag .x:hover { color:var(--red); }
+
+  /* ── KV rows ── */
+  .kv-row { display:flex; gap:10px; margin-bottom:10px; }
+  .kv-row input:nth-child(1) { flex:0.4; }
+  .kv-row input:nth-child(2) { flex:0.6; }
+  .kv-row .remove-btn { flex-shrink:0; align-self:center; }
+
+  /* ── Buttons ── */
+  .btn-row { display:flex; justify-content:space-between; margin-top:40px; gap:12px; }
+  .btn {
+    padding:14px 32px; border-radius:12px; border:none;
+    font-size:16px; font-weight:600; cursor:pointer; transition:all .15s;
+  }
+  .btn-primary { background:var(--accent); color:white; box-shadow:var(--shadow); }
+  .btn-primary:hover { background:var(--accent2); box-shadow:var(--shadow-md); }
+  .btn-secondary { background:var(--surface); color:var(--text); border:1.5px solid var(--border); }
+  .btn-secondary:hover { background:var(--surface2); }
+  .btn-add {
+    width:100%; padding:16px; background:var(--surface); border:2px dashed var(--border);
+    border-radius:14px; color:var(--text2); font-size:15px; cursor:pointer; transition:all .15s; font-weight:500;
+  }
+  .btn-add:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
+  .btn-sm { padding:10px 16px; font-size:14px; border-radius:10px; }
+
+  /* ── Output ── */
+  .output-box {
+    background:var(--surface); border:1.5px solid var(--border); border-radius:14px;
+    padding:24px; margin-top:20px; box-shadow:var(--shadow);
+  }
+  .output-box pre {
+    font-family:'SF Mono','Fira Code','Consolas',monospace; font-size:13px; color:var(--text);
+    white-space:pre-wrap; word-break:break-word; max-height:400px; overflow-y:auto;
+    background:var(--surface2); padding:16px; border-radius:10px;
+  }
+  .copy-btn {
+    margin-top:14px; padding:12px 24px; background:var(--accent); color:white;
+    border:none; border-radius:10px; font-weight:600; cursor:pointer; font-size:15px;
+    box-shadow:var(--shadow);
+  }
+  .copy-btn:hover { background:var(--accent2); }
+  .req { color:var(--red); }
+
+  /* ── Divider ── */
+  .divider { border-top:1.5px solid var(--border); margin:32px 0; }
+
+  /* ── Loading ── */
+  .loading-overlay {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(248,250,252,0.92); display:none; align-items:center;
+    justify-content:center; z-index:1000; flex-direction:column; gap:20px;
+    backdrop-filter: blur(4px);
+  }
+  .spinner {
+    width:40px; height:40px; border:4px solid var(--border);
+    border-top-color:var(--accent); border-radius:50%;
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .loading-overlay .msg { color:var(--text2); font-size:16px; text-align:center; max-width:360px; font-weight:500; }
+  .loading-overlay .skip-btn {
+    margin-top:4px; color:var(--text3); font-size:14px;
+    background:var(--surface); border:1.5px solid var(--border); padding:8px 20px;
+    border-radius:10px; cursor:pointer; font-weight:500;
+  }
+  .loading-overlay .skip-btn:hover { color:var(--text2); border-color:var(--text3); }
+
+  /* ── AI badge ── */
+  .ai-badge {
+    display:inline-block; font-size:13px; color:var(--accent);
+    background:var(--accent-light); border:1.5px solid rgba(79,70,229,0.2);
+    border-radius:8px; padding:6px 14px; margin-bottom:24px; font-weight:500;
+  }
+
+  /* ── Notice ── */
+  .notice {
+    font-size:14px; color:var(--amber); background:var(--amber-light);
+    border:1.5px solid rgba(217,119,6,0.2); border-radius:10px;
+    padding:12px 16px; margin-bottom:24px; font-weight:500;
+  }
+
+  /* ── Report ── */
+  .report-area {
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px;
+    padding: 32px; margin-top: 20px; box-shadow: var(--shadow);
+    font-size: 15px; line-height: 1.8;
+  }
+  .report-area h2 { font-size:22px; margin: 24px 0 12px; color:var(--accent); }
+  .report-area h3 { font-size:18px; margin: 20px 0 8px; }
+  .report-area h4 { font-size:16px; margin: 16px 0 6px; }
+  .report-area strong { color:var(--text); }
+  .report-area ul, .report-area ol { padding-left:24px; margin:8px 0; }
+  .report-area li { margin:4px 0; }
+  .report-area p { margin: 8px 0; }
+  .report-area:empty { display:none; }
+
+  /* ── Pipeline Dashboard ── */
+  .pipeline-dashboard {
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px;
+    padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow);
+  }
+  .pipeline-stages {
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .pipeline-stage {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    min-width: 70px; position: relative;
+  }
+  .stage-icon {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--surface2); border: 2.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: var(--text3);
+    transition: all .3s;
+  }
+  .pipeline-stage.running .stage-icon {
+    background: var(--accent-light); border-color: var(--accent); color: var(--accent);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .pipeline-stage.done .stage-icon {
+    background: var(--green-light); border-color: var(--green); color: var(--green);
+  }
+  .pipeline-stage.error .stage-icon {
+    background: var(--red-light); border-color: var(--red); color: var(--red);
+  }
+  .stage-label { font-size: 12px; font-weight: 600; color: var(--text2); text-align: center; }
+  .stage-time { font-size: 11px; color: var(--text3); }
+  .pipeline-connector {
+    flex: 1; height: 2.5px; background: var(--border); margin: 0 6px;
+    align-self: center; margin-top: -12px; transition: background .3s;
+  }
+  .pipeline-connector.done { background: var(--green); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ── Stage Cards ── */
+  .stage-card {
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px;
+    margin-bottom: 12px; box-shadow: var(--shadow); overflow: hidden;
+    animation: fadeIn .3s ease;
+  }
+  .stage-card-header {
+    padding: 14px 20px; display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none; gap: 12px;
+  }
+  .stage-card-header:hover { background: var(--surface2); }
+  .stage-card-body { padding: 0 20px 20px; display: none; font-size: 14px; line-height: 1.7; }
+  .stage-card-body.open { display: block; }
+  .agent-badge {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 4px 10px; border-radius: 6px;
+    white-space: nowrap;
+  }
+  .agent-badge.framework { background: #ede9fe; color: #7c3aed; }
+  .agent-badge.oracle { background: #dbeafe; color: #2563eb; }
+  .agent-badge.echo { background: #fce7f3; color: #db2777; }
+  .agent-badge.model { background: #fef3c7; color: #d97706; }
+  .agent-badge.devil { background: var(--red-light); color: var(--red); }
+  .agent-badge.sage { background: var(--green-light); color: var(--green); }
+  .agent-badge.nexus { background: #e0e7ff; color: #4338ca; }
+  .agent-badge.mirror { background: var(--surface2); color: var(--text2); }
+  .stage-card-toggle { font-size: 12px; color: var(--text3); transition: transform .2s; }
+
+  /* ── Framework Review ── */
+  .fw-review {
+    background: var(--accent-light); border: 1.5px solid rgba(79,70,229,0.2);
+    border-radius: 14px; padding: 24px; margin: 16px 0;
+  }
+  .fw-review h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--accent); }
+  .fw-dim-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+    padding: 10px 14px; background: var(--surface); border-radius: 10px;
+    border: 1px solid var(--border); font-size: 14px;
+  }
+  .fw-dim-row .dim-name { flex: 1; font-weight: 600; }
+  .fw-dim-row .weight-val { min-width: 44px; text-align: right; font-weight: 700; color: var(--accent); font-size: 15px; }
+  .fw-dim-row input[type="range"] { width: 100px; accent-color: var(--accent); }
+  .fw-scenario-chip {
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px;
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 13px; margin: 4px; font-weight: 500;
+  }
+  .fw-scenario-chip .prob { color: var(--accent); font-weight: 700; }
+
+  /* ── Mini tables in cards ── */
+  .mini-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+  .mini-table th {
+    text-align: left; padding: 8px 10px; background: var(--surface2); font-weight: 600;
+    border-bottom: 2px solid var(--border); font-size: 12px; text-transform: uppercase;
+    letter-spacing: 0.3px; color: var(--text2);
+  }
+  .mini-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .mini-table tr:last-child td { border-bottom: none; }
+  .mini-table .rank-1 { font-weight: 700; color: var(--green); }
+  .mini-table .score-bar {
+    display: inline-block; height: 8px; border-radius: 4px;
+    background: var(--accent); vertical-align: middle; margin-right: 6px;
+  }
+
+  /* ── Challenge badges ── */
+  .severity-badge {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 2px 8px;
+    border-radius: 4px; letter-spacing: 0.3px;
+  }
+  .severity-badge.critical { background: var(--red-light); color: var(--red); }
+  .severity-badge.moderate { background: var(--amber-light); color: var(--amber); }
+  .severity-badge.minor { background: var(--surface2); color: var(--text2); }
+
+  .pipeline-error {
+    color: var(--red); background: var(--red-light); padding: 12px 16px;
+    border-radius: 10px; font-size: 14px; margin: 10px 0;
+  }
+
+  /* ── Activity Side Panel ── */
+  .activity-toggle {
+    position: fixed; bottom: 24px; right: 24px; z-index: 900;
+    padding: 10px 18px; border-radius: 12px;
+    background: #1e293b; color: #e2e8f0; border: none;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    display: none; align-items: center; gap: 8px;
+    transition: all .2s;
+  }
+  .activity-toggle:hover { background: #334155; transform: translateY(-1px); }
+  .activity-toggle .act-count {
+    background: var(--accent); color: white;
+    padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700;
+  }
+  .activity-toggle.pulse { animation: togglePulse 2s ease-in-out infinite; }
+  @keyframes togglePulse { 0%,100%{box-shadow:0 4px 14px rgba(0,0,0,0.18)} 50%{box-shadow:0 4px 20px rgba(79,70,229,0.4)} }
+
+  .activity-panel {
+    position: fixed; top: 0; right: -420px; z-index: 950;
+    width: 400px; height: 100vh;
+    background: #0f172a; color: #cbd5e1;
+    border-left: 1px solid #1e293b;
+    display: flex; flex-direction: column;
+    transition: right .3s cubic-bezier(.4,0,.2,1);
+    box-shadow: -8px 0 30px rgba(0,0,0,0.25);
+    pointer-events: none;
+  }
+  .activity-panel.open { right: 0; pointer-events: auto; }
+
+  .activity-panel-header {
+    padding: 14px 18px; border-bottom: 1px solid #1e293b;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0; background: #0f172a;
+  }
+  .activity-panel-header h3 { font-size: 14px; font-weight: 700; color: #f1f5f9; letter-spacing: 0.3px; }
+  .activity-panel-header .act-stats { font-size: 11px; color: #64748b; }
+  .act-close {
+    background: none; border: none; color: #64748b; cursor: pointer;
+    font-size: 20px; padding: 2px 6px; border-radius: 6px; line-height: 1;
+  }
+  .act-close:hover { color: #f1f5f9; background: #1e293b; }
+
+  .activity-log {
+    flex: 1; overflow-y: auto; padding: 10px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 12px; line-height: 1.6;
+  }
+  .activity-log::-webkit-scrollbar { width: 6px; }
+  .activity-log::-webkit-scrollbar-track { background: #0f172a; }
+  .activity-log::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+  .act-entry {
+    margin-bottom: 8px; padding: 10px 12px;
+    background: #1e293b; border-radius: 8px;
+    border-left: 3px solid #334155;
+    transition: border-color .3s;
+  }
+  .act-entry.running { border-left-color: #818cf8; }
+  .act-entry.done { border-left-color: #34d399; }
+  .act-entry.error { border-left-color: #f87171; }
+  .act-entry.info { border-left-color: #64748b; }
+
+  .act-entry-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 2px;
+  }
+  .act-agent { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .act-time { color: #475569; font-size: 10px; font-family: monospace; }
+  .act-status { font-size: 11px; }
+  .act-summary { color: #94a3b8; font-size: 11px; margin-top: 3px; line-height: 1.5; }
+
+  .act-entry details { margin-top: 6px; }
+  .act-entry summary {
+    color: #475569; font-size: 10px; cursor: pointer; user-select: none;
+    letter-spacing: 0.3px; text-transform: uppercase; font-weight: 600;
+  }
+  .act-entry summary:hover { color: #94a3b8; }
+  .act-raw {
+    margin-top: 6px; padding: 8px;
+    background: #0f172a; border: 1px solid #1e293b; border-radius: 6px;
+    max-height: 240px; overflow-y: auto;
+    color: #64748b; font-size: 10px;
+    white-space: pre-wrap; word-break: break-all;
+    line-height: 1.5;
+  }
+
+  .act-divider {
+    border: none; border-top: 1px solid #1e293b; margin: 12px 4px;
+  }
+
+  @media (max-width: 900px) {
+    .activity-panel { width: 100%; right: -100%; }
+    .activity-toggle { bottom: 12px; right: 12px; font-size: 12px; padding: 8px 14px; }
+  }
+
+  /* ═══════════════════════════════════════════ */
+  /* ═══ ENHANCED LAYOUT & DESIGN ══════════════ */
+  /* ═══════════════════════════════════════════ */
+
+  /* Wider container */
+  .container { max-width: 960px; padding: 48px 36px; }
+  body { font-size: 17px; }
+
+  /* Enhanced Header */
+  .header {
+    background: linear-gradient(135deg, #eef2ff 0%, #f8f7ff 50%, var(--surface) 100%);
+    padding: 36px 32px; border-radius: 20px;
+    border: 1.5px solid rgba(79,70,229,0.08);
+    box-shadow: 0 2px 12px rgba(79,70,229,0.06);
+  }
+  .header h1 { font-size: 34px; }
+  .header p { font-size: 17px; }
+
+  /* Enhanced Progress */
+  .progress-wrap {
+    background: var(--surface); padding: 20px 28px; border-radius: 16px;
+    border: 1.5px solid var(--border); box-shadow: var(--shadow);
+  }
+  .step-label { font-size: 14px; font-weight: 600; }
+  .progress-dot { height: 8px; border-radius: 4px; }
+
+  /* Larger step text */
+  .step h2 { font-size: 26px; }
+  .step .sub { font-size: 16px; }
+  .field label { font-size: 16px; }
+
+  /* Larger inputs */
+  input[type="text"], input[type="number"], input[type="password"], textarea, select {
+    font-size: 17px; padding: 14px 18px;
+  }
+
+  /* Better buttons */
+  .btn { font-size: 17px; padding: 15px 34px; transition: all .2s; }
+  .btn-primary { box-shadow: 0 4px 14px rgba(79,70,229,0.2); }
+  .btn-primary:hover { box-shadow: 0 6px 20px rgba(79,70,229,0.3); transform: translateY(-1px); }
+
+  /* ── Step 0: Hero Split Layout ── */
+  .step0-layout {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;
+  }
+  .step0-hero {
+    padding: 28px 24px; border-radius: 20px; color: white;
+    background: linear-gradient(160deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%);
+    box-shadow: 0 8px 32px rgba(79,70,229,0.25);
+  }
+  .hero-title { font-size: 24px; font-weight: 800; margin-bottom: 10px; line-height: 1.3; }
+  .hero-desc { font-size: 14px; opacity: 0.9; line-height: 1.7; margin-bottom: 20px; }
+  .hero-features { display: flex; flex-direction: column; gap: 8px; }
+  .hero-feature {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; background: rgba(255,255,255,0.12);
+    border-radius: 10px; font-size: 13px; line-height: 1.5;
+  }
+  .hero-feature .hf-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: rgba(255,255,255,0.15); display: flex;
+    align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .hero-feature .hf-text strong { display: block; font-size: 13px; margin-bottom: 1px; }
+  .hero-feature .hf-text span { opacity: 0.8; font-size: 12px; }
+
+  /* ── Step 3: Split Layout ── */
+  .step3-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;
+  }
+  .step3-right {
+    background: var(--surface2); padding: 24px; border-radius: 16px;
+    border: 1.5px solid var(--border);
+  }
+  .step3-right h3 { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  .step3-right .step3-sub { font-size: 14px; color: var(--text2); margin-bottom: 16px; line-height: 1.6; }
+
+  /* ── Enhanced Pipeline Stage Icons ── */
+  .stage-icon { width: 44px; height: 44px; font-size: 15px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .container { max-width: 100%; padding: 24px 16px; }
+    .step0-layout { grid-template-columns: 1fr; gap: 24px; }
+    .step3-grid { grid-template-columns: 1fr; }
+    body { font-size: 16px; }
+    .header h1 { font-size: 28px; }
+    .step h2 { font-size: 22px; }
+  }
+
+  /* ── Sessions panel ── */
+  .sessions-panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px 22px; margin-bottom: 28px; box-shadow: var(--shadow);
+  }
+  .sessions-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .session-row {
+    display:flex; align-items:center; gap:12px; padding:12px 14px;
+    border:1px solid var(--border); border-radius:10px; margin-bottom:8px;
+    background:var(--surface); transition:all .15s; cursor:pointer;
+  }
+  .session-row:hover { border-color:var(--accent); background:var(--accent-light); }
+  .session-row.active { border-color:var(--accent); background:var(--accent-light); }
+  .session-main { flex:1; min-width:0; }
+  .session-title { font-weight:600; font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .session-meta { font-size:12px; color:var(--text2); margin-top:3px; }
+  .session-progress { font-size:11px; color:var(--text3); margin-top:2px; }
+  .session-actions { display:flex; gap:6px; flex-shrink:0; }
+  .session-actions button { padding:6px 12px; font-size:12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); cursor:pointer; font-weight:500; color:var(--text2); }
+  .session-actions button:hover { border-color:var(--accent); color:var(--accent); }
+  .session-actions .danger:hover { border-color:var(--red); color:var(--red); background:var(--red-light); }
+
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>AI 决策引擎</h1>
+    <p>AI-powered analysis engine for any life decision</p>
+  </div>
+
+  <!-- ══════ AI Config Panel ══════ -->
+  <div class="config-panel">
+    <div class="config-header" onclick="toggleConfig()">
+      <span id="configTitle">AI 服务商设置</span>
+      <span class="config-toggle" id="configToggle">&#9660;</span>
+    </div>
+    <div class="config-body" id="configBody">
+      <div class="field" style="margin-top:4px">
+        <label>服务商</label>
+        <div class="provider-pills" id="providerPills">
+          <button class="pill active" onclick="selectProvider('openai')">OpenAI</button>
+          <button class="pill" onclick="selectProvider('deepseek')">DeepSeek</button>
+          <button class="pill" onclick="selectProvider('gemini')">Gemini</button>
+          <button class="pill" onclick="selectProvider('anthropic')">Claude</button>
+          <button class="pill" onclick="selectProvider('custom')">Custom</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>API Key</label>
+        <div style="display:flex;gap:10px">
+          <input type="password" id="apiKey" placeholder="sk-..." style="flex:1" onchange="saveConfig()">
+          <button class="btn btn-secondary btn-sm" onclick="toggleKeyVis()" id="keyVisBtn">显示</button>
+        </div>
+        <p class="hint">只保存在你的浏览器中,通过本地服务器仅转发给所选服务商。</p>
+      </div>
+
+      <div class="field">
+        <label>模型</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="modelSelect" onchange="onModelSelectChange()" style="flex:1"></select>
+          <input type="text" id="customModel" placeholder="模型名,如 my-model-v1" style="display:none;flex:1" oninput="saveConfig()">
+        </div>
+        <p class="hint" id="modelCustomHint" style="display:none;margin-top:4px;font-size:12px;color:var(--text3)">选择 "Custom model name…" 后可手动输入模型 ID</p>
+      </div>
+
+      <div class="field" id="customEndpointField" style="display:none">
+        <label>API 接口地址(兼容 OpenAI)</label>
+        <input type="text" id="customEndpoint" placeholder="https://your-api.com/v1/chat/completions" onchange="saveConfig()">
+      </div>
+
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="testConnection()">测试连接</button>
+        <span id="testResult" style="font-size:14px;font-weight:500"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ Progress ══════ -->
+  <div class="progress-wrap">
+    <div class="step-label">
+      <span>Decision</span><span>Context</span><span>Options</span><span>Values</span><span>Output</span>
+    </div>
+    <div class="progress">
+      <div class="progress-dot active"></div>
+      <div class="progress-dot"></div>
+      <div class="progress-dot"></div>
+      <div class="progress-dot"></div>
+      <div class="progress-dot"></div>
+    </div>
+  </div>
+
+  <!-- ══════ Sessions History Panel ══════ -->
+  <div id="sessionsPanel" class="sessions-panel" style="display:none">
+    <div class="sessions-header">
+      <h3 style="font-size:15px;font-weight:600;color:var(--text)">已保存的决策</h3>
+      <button class="btn btn-secondary btn-sm" onclick="Sessions.startNew()">+ 新建决策</button>
+    </div>
+    <div id="sessionsList"></div>
+  </div>
+
+  <!-- ══════ STEP 0: Decision ══════ -->
+  <div class="step active" id="step0">
+    <div class="step0-layout">
+      <div class="step0-hero">
+        <div class="hero-title">AI 决策分析引擎</div>
+        <div class="hero-desc">8 个专门的 AI agent 协同,为你的重要人生决策提供量化分析和多角度评估。</div>
+        <div class="hero-features">
+          <div class="hero-feature">
+            <span class="hf-icon">&#9632;</span>
+            <div class="hf-text">
+              <strong>量化建模</strong>
+              <span>真实蒙特卡洛仿真 + 效用函数</span>
+            </div>
+          </div>
+          <div class="hero-feature">
+            <span class="hf-icon">&#9670;</span>
+            <div class="hf-text">
+              <strong>多源研究</strong>
+              <span>官方数据 + 社区舆情交叉验证</span>
+            </div>
+          </div>
+          <div class="hero-feature">
+            <span class="hf-icon">&#9650;</span>
+            <div class="hf-text">
+              <strong>对抗审查</strong>
+              <span>对榜首选项做压力测试,挖出隐藏风险</span>
+            </div>
+          </div>
+          <div class="hero-feature">
+            <span class="hf-icon">&#9679;</span>
+            <div class="hf-text">
+              <strong>趋势预测</strong>
+              <span>5–10 年前瞻性分析</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step0-form">
+        <h2>你在做什么决策?</h2>
+        <p class="sub">描述你面临的决策。任何事都行 —— 选学校、选 offer、投资、搬家,或其他任何选择。</p>
+
+        <div class="field">
+          <label>描述你的决策 <span class="req">*</span></label>
+          <p class="examples">
+            例如:"在三个研究生 offer 之间选" ·
+            "两个工作机会:创业公司 vs 银行" ·
+            "继续工作、读研、还是换城市" ·
+            "投资房产还是指数基金"
+          </p>
+          <textarea id="decisionDesc" placeholder="用你自己的话描述这个决策..."></textarea>
+        </div>
+
+        <div class="field">
+          <label>你有几个备选?</label>
+          <p class="hint">大致数字即可,后面再填细节。</p>
+          <input type="number" id="numOptions" placeholder="例如 3" min="2" max="20" value="3">
+        </div>
+
+        <div class="field">
+          <label>什么时候需要做决定?</label>
+          <input type="text" id="deadline" placeholder="例如 2026-04-15 / 无硬性截止 / 越快越好">
+        </div>
+
+        <div class="btn-row">
+          <div></div>
+          <button class="btn btn-primary" onclick="submitStep0()">下一步 &rarr;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ STEP 1: Context (Dynamic) ══════ -->
+  <div class="step" id="step1">
+    <div id="step1Content"></div>
+  </div>
+
+  <!-- ══════ STEP 2: Options ══════ -->
+  <div class="step" id="step2">
+    <h2>你的备选</h2>
+    <p class="sub">描述你正在考虑的每个备选,细节越详细分析越准。</p>
+
+    <div id="optionsContainer"></div>
+    <button class="btn-add" onclick="addOption()">+ 添加备选</button>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goBack()">&larr; 返回</button>
+      <button class="btn btn-primary" onclick="submitStep2()">下一步 &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ══════ STEP 3: Values ══════ -->
+  <div class="step" id="step3">
+    <h2>你看重什么</h2>
+    <p class="sub">你的价值观和担忧塑造了整个分析。诚实回答 —— 没有标准答案。</p>
+
+    <div class="step3-grid">
+      <div class="step3-left">
+        <div class="field">
+          <label>你的目标是什么? <span class="req">*</span></label>
+          <p class="examples" id="goalExamples">
+            "Maximize long-term earning potential" · "Best work-life balance" ·
+            "Minimize risk while maintaining upside" · "Strongest brand for my resume"
+          </p>
+          <textarea id="goal" placeholder="你最希望优化什么?"></textarea>
+        </div>
+
+        <div class="field">
+          <label>你的担忧 <span class="req">*</span></label>
+          <p class="hint" id="concernHint">这个决策中什么让你睡不着觉?AI 会针对每条担忧做压力测试。</p>
+          <div id="concernSuggestions" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+          <div class="tag-input-row">
+            <input type="text" id="concernInput" placeholder="输入担忧后按 Enter">
+            <button class="btn btn-primary btn-sm" onclick="addConcern()">添加</button>
+          </div>
+          <div class="tags" id="concernTags"></div>
+        </div>
+
+        <div class="field">
+          <label>你最看重什么? <span class="req">*</span></label>
+          <p class="examples" id="valueExamples">
+            "ROI matters most" · "Safety and stability come first" ·
+            "Career flexibility over immediate pay" · "Quality of life is my top priority"
+          </p>
+          <textarea id="values" placeholder="用自己的话描述你的优先级..."></textarea>
+        </div>
+      </div>
+
+      <div class="step3-right">
+        <h3>自我评估(可选)</h3>
+        <p class="step3-sub">Rate yourself on dimensions relevant to this decision. You can skip or add your own.</p>
+
+        <div id="traitContainer"></div>
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <input type="text" id="newTraitName" placeholder="维度名,如 风险承受能力" style="flex:1">
+          <button class="btn btn-secondary btn-sm" onclick="addTrait()">+ 添加</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field">
+          <label>还有什么要补充?</label>
+          <textarea id="extraNotes" placeholder="其他任何想法或背景..." style="min-height:70px"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goBack()">&larr; 返回</button>
+      <button class="btn btn-primary" onclick="submitStep3()">开始分析 &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ══════ STEP 4: Pipeline ══════ -->
+  <div class="step" id="step4">
+    <h2>分析流水线</h2>
+    <p class="sub">8 个专门 AI agent 逐步分析你的决策,每一步都基于前一步。</p>
+
+    <!-- Pipeline Dashboard -->
+    <div class="pipeline-dashboard" id="pipelineDashboard">
+      <div class="pipeline-stages">
+        <div class="pipeline-stage" id="ps_framework">
+          <div class="stage-icon">1</div>
+          <div class="stage-label">框架</div>
+          <div class="stage-time" id="pt_framework"></div>
+        </div>
+        <div class="pipeline-connector" id="pc_1"></div>
+        <div class="pipeline-stage" id="ps_research">
+          <div class="stage-icon">2</div>
+          <div class="stage-label">研究</div>
+          <div class="stage-time" id="pt_research"></div>
+        </div>
+        <div class="pipeline-connector" id="pc_2"></div>
+        <div class="pipeline-stage" id="ps_model">
+          <div class="stage-icon">3</div>
+          <div class="stage-label">模型</div>
+          <div class="stage-time" id="pt_model"></div>
+        </div>
+        <div class="pipeline-connector" id="pc_3"></div>
+        <div class="pipeline-stage" id="ps_challenge">
+          <div class="stage-icon">4</div>
+          <div class="stage-label">挑战</div>
+          <div class="stage-time" id="pt_challenge"></div>
+        </div>
+        <div class="pipeline-connector" id="pc_4"></div>
+        <div class="pipeline-stage" id="ps_synthesis">
+          <div class="stage-icon">5</div>
+          <div class="stage-label">综合</div>
+          <div class="stage-time" id="pt_synthesis"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pipeline Cards (rendered dynamically) -->
+    <div id="pipelineCards"></div>
+
+    <!-- Final Report -->
+    <div class="report-area" id="reportArea"></div>
+
+    <!-- Run Button -->
+    <div style="margin-top:20px" id="pipelineControlRow">
+      <button class="btn btn-primary" id="pipelineBtn" onclick="runPipeline()" style="width:100%;padding:16px;font-size:17px">
+        运行完整流水线(8 次 AI 调用)
+      </button>
+      <p style="font-size:13px;color:var(--text2);text-align:center;margin-top:8px" id="pipelineHint">
+        FRAMEWORK → ORACLE + ECHO → MODEL → DEVIL + SAGE → NEXUS → MIRROR
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- YAML Export -->
+    <details style="margin-top:8px">
+      <summary style="cursor:pointer;font-size:15px;font-weight:600;color:var(--text2);padding:8px 0">
+        导出为 YAML(手动使用)
+      </summary>
+      <div class="output-box" style="margin-top:12px">
+        <pre id="outputYaml"></pre>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:12px">
+        <button class="copy-btn" onclick="copyText('outputYaml')">复制到剪贴板</button>
+        <button class="copy-btn" style="background:var(--green)" onclick="downloadFile()">下载 YAML</button>
+      </div>
+    </details>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goBack()">&larr; 返回</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Loading Overlay ── -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="msg" id="loadingMsg">等待 AI 中...</div>
+  <button class="skip-btn" id="skipBtn" onclick="skipLoading()">跳过 — 使用默认表单</button>
+</div>
+
+<!-- ── Activity Side Panel ── -->
+<button class="activity-toggle" id="activityToggle" onclick="toggleActivity()">
+  <span>活动日志</span>
+  <span class="act-count" id="activityCount">0</span>
+</button>
+<div class="activity-panel" id="activityPanel">
+  <div class="activity-panel-header">
+    <div>
+      <h3>流水线活动</h3>
+      <span class="act-stats" id="actStats"></span>
+    </div>
+    <button class="act-close" onclick="toggleActivity()">&times;</button>
+  </div>
+  <div class="activity-log" id="activityLog"></div>
+</div>
+
+<script src="prompts.js"></script>
+<script>
+// ═══════════════════════════════════════════
+// ═══ PROVIDERS ════════════════════════════
+// ═══════════════════════════════════════════
+var PROVIDERS = {
+  openai:    { name:'OpenAI',    models:['gpt-4o','gpt-4o-mini','gpt-4.1','gpt-4.1-mini','o1','o1-mini','o3-mini'], def:'gpt-4o', ph:'sk-...' },
+  deepseek:  { name:'DeepSeek',  models:['deepseek-chat','deepseek-reasoner'], def:'deepseek-chat', ph:'sk-...' },
+  gemini:    { name:'Gemini',    models:['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'], def:'gemini-2.5-flash', ph:'AIza...' },
+  anthropic: { name:'Claude',    models:['claude-opus-4-7','claude-sonnet-4-6','claude-haiku-4-5'], def:'claude-sonnet-4-6', ph:'sk-ant-...' },
+  custom:    { name:'Custom',    models:[], def:'', ph:'your-api-key' }
+};
+var currentProvider = 'openai';
+
+// ═══════════════════════════════════════════
+// ═══ STATE ════════════════════════════════
+// ═══════════════════════════════════════════
+var currentStep = 0;
+var concerns = [];
+var traits = [];
+var suggestedTraits = [];
+var optionCount = 0;
+var step1Rendered = false;
+var step3PrePop = false;
+var skipWait = false;
+var aiExamples = {}; // AI-generated examples for all steps
+var serverOK = false;
+var serverDate = ''; // Current date from server, e.g. "2026-03-27"
+
+// ═══════════════════════════════════════════
+// ═══ CONFIG PANEL ═════════════════════════
+// ═══════════════════════════════════════════
+function toggleConfig() {
+  var body = document.getElementById('configBody');
+  var toggle = document.getElementById('configToggle');
+  body.classList.toggle('open');
+  toggle.classList.toggle('open');
+}
+
+function selectProvider(p) {
+  currentProvider = p;
+  var pills = document.querySelectorAll('.pill');
+  pills.forEach(function(el) { el.classList.remove('active'); });
+  var names = ['openai','deepseek','gemini','anthropic','custom'];
+  pills.forEach(function(el, i) { if (names[i] === p) el.classList.add('active'); });
+
+  var info = PROVIDERS[p];
+  document.getElementById('apiKey').placeholder = info.ph;
+
+  var sel = document.getElementById('modelSelect');
+  var cust = document.getElementById('customModel');
+  var epField = document.getElementById('customEndpointField');
+  var hint = document.getElementById('modelCustomHint');
+
+  if (p === 'custom') {
+    sel.style.display = 'none';
+    cust.style.display = 'block';
+    cust.placeholder = 'model name, e.g. my-model-v1';
+    epField.style.display = 'block';
+    hint.style.display = 'none';
+  } else {
+    sel.style.display = 'block';
+    epField.style.display = 'none';
+    sel.innerHTML = '';
+    info.models.forEach(function(m) {
+      var o = document.createElement('option');
+      o.value = m; o.textContent = m;
+      if (m === info.def) o.selected = true;
+      sel.appendChild(o);
+    });
+    // Add "custom model name" option at the end
+    var customOpt = document.createElement('option');
+    customOpt.value = '__custom__';
+    customOpt.textContent = 'Custom model name…';
+    sel.appendChild(customOpt);
+    // Reset custom input
+    cust.style.display = 'none';
+    cust.placeholder = 'Enter ' + info.name + ' model ID, e.g. ' + info.models[0] + '-latest';
+    hint.style.display = 'none';
+  }
+  saveConfig();
+}
+
+function onModelSelectChange() {
+  var sel = document.getElementById('modelSelect');
+  var cust = document.getElementById('customModel');
+  var hint = document.getElementById('modelCustomHint');
+  if (sel.value === '__custom__') {
+    cust.style.display = 'block';
+    hint.style.display = 'block';
+    cust.focus();
+  } else {
+    cust.style.display = 'none';
+    cust.value = '';
+    hint.style.display = 'none';
+  }
+  saveConfig();
+}
+
+function toggleKeyVis() {
+  var input = document.getElementById('apiKey');
+  var btn = document.getElementById('keyVisBtn');
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = '隐藏'; }
+  else { input.type = 'password'; btn.textContent = '显示'; }
+}
+
+function getModel() {
+  if (currentProvider === 'custom') return document.getElementById('customModel').value.trim();
+  var sel = document.getElementById('modelSelect').value;
+  if (sel === '__custom__') return document.getElementById('customModel').value.trim();
+  return sel;
+}
+
+function getApiKey() { return document.getElementById('apiKey').value.trim(); }
+
+function isConfigured() { return getApiKey() && (currentProvider !== 'custom' || document.getElementById('customEndpoint').value.trim()); }
+
+function saveConfig() {
+  try {
+    localStorage.setItem('df_config', JSON.stringify({
+      provider: currentProvider,
+      api_key: getApiKey(),
+      model: getModel(),
+      endpoint: document.getElementById('customEndpoint').value.trim()
+    }));
+  } catch(e) {}
+  updateConfigTitle();
+}
+
+function loadConfig() {
+  try {
+    var s = localStorage.getItem('df_config');
+    if (!s) return;
+    var c = JSON.parse(s);
+    if (c.provider) selectProvider(c.provider);
+    if (c.api_key) document.getElementById('apiKey').value = c.api_key;
+    if (c.model) {
+      if (currentProvider === 'custom') {
+        document.getElementById('customModel').value = c.model;
+      } else {
+        var sel = document.getElementById('modelSelect');
+        var found = Array.from(sel.options).some(function(o) { return o.value === c.model; });
+        if (found) {
+          sel.value = c.model;
+        } else {
+          sel.value = '__custom__';
+          document.getElementById('customModel').value = c.model;
+          document.getElementById('customModel').style.display = 'block';
+          document.getElementById('modelCustomHint').style.display = 'block';
+        }
+      }
+    }
+    if (c.endpoint) document.getElementById('customEndpoint').value = c.endpoint;
+  } catch(e) {}
+  updateConfigTitle();
+}
+
+function updateConfigTitle() {
+  var title = document.getElementById('configTitle');
+  if (isConfigured()) {
+    title.innerHTML = 'AI Provider: <strong style="color:var(--accent)">' + PROVIDERS[currentProvider].name + '</strong> — ' + getModel();
+  } else {
+    title.textContent = 'AI 服务商设置(点击展开配置)';
+  }
+}
+
+async function testConnection() {
+  var el = document.getElementById('testResult');
+  if (!isConfigured()) { el.textContent = '请填写 API Key'; el.style.color='var(--red)'; return; }
+
+  el.textContent = 'Testing...'; el.style.color='var(--text2)';
+  try {
+    var result = await callAI([{role:'user',content:'请用"Connection successful"这两个单词回复,不要任何其他内容。'}]);
+    if (result) { el.textContent = '连接成功!'; el.style.color='var(--green)'; }
+    else { el.textContent = '无响应'; el.style.color='var(--red)'; }
+  } catch(e) {
+    el.textContent = 'Error: ' + e.message; el.style.color='var(--red)';
+  }
+}
+
+// ═══════════════════════════════════════════
+// ═══ API COMMUNICATION ═══════════════════
+// ═══════════════════════════════════════════
+async function checkServer() {
+  try {
+    var res = await fetch('/health');
+    var data = await res.json();
+    serverOK = data.ok === true;
+    if (data.date) serverDate = data.date;
+  } catch(e) { serverOK = false; }
+}
+
+var PROVIDER_MAX_TOKENS = { openai:16384, deepseek:8192, gemini:32768, anthropic:32768, custom:8192 };
+
+async function callAI(messages, max_tokens) {
+  if (!isConfigured()) return null;
+
+  // Inject current date into the first system message so AI knows "today"
+  var dateStr = serverDate || new Date().toISOString().slice(0, 10);
+  var datePrefix = '[CURRENT DATE: ' + dateStr + '] Use this as today\'s date for all analysis. Do NOT use your training data cutoff date.\n\n' +
+    '[LANGUAGE] All natural-language output (narratives, reasoning fields, the final report_markdown, error messages) MUST be in 简体中文. JSON keys, field IDs, distribution names, code-like identifiers stay in English. Numbers and percentages are rendered as usual.\n\n';
+  var injected = messages.map(function(m, i) {
+    if (i === 0 && m.role === 'system') {
+      return { role: 'system', content: datePrefix + m.content };
+    }
+    return m;
+  });
+  // If no system message exists, prepend one
+  if (!injected.length || injected[0].role !== 'system') {
+    injected.unshift({ role: 'system', content: datePrefix.trim() });
+  }
+
+  var providerCap = PROVIDER_MAX_TOKENS[currentProvider] || 4096;
+  var finalTokens = Math.min(max_tokens || 4096, providerCap);
+
+  var body = {
+    provider: currentProvider,
+    api_key: getApiKey(),
+    model: getModel(),
+    messages: injected,
+    max_tokens: finalTokens
+  };
+  if (currentProvider === 'custom') {
+    body.endpoint = document.getElementById('customEndpoint').value.trim();
+  }
+
+  // Always re-check server before calling API
+  if (!serverOK) await checkServer();
+  if (!serverOK) {
+    throw new Error('服务器未运行。请先启动 server.py,然后刷新页面。');
+  }
+  var res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  var data = await res.json();
+  if (data.ok) return data.content;
+  throw new Error(data.error || 'API 调用失败');
+}
+
+function parseAIJson(text) {
+  try { return JSON.parse(text); } catch(e) {}
+  var m = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  if (m) { try { return JSON.parse(m[1]); } catch(e) {} }
+  var s = text.indexOf('{'), e = text.lastIndexOf('}');
+  if (s !== -1 && e > s) { try { return JSON.parse(text.substring(s, e+1)); } catch(ex) {} }
+  return null;
+}
+
+// ═══════════════════════════════════════════
+// ═══ LOADING UI ══════════════════════════
+// ═══════════════════════════════════════════
+function showLoading(msg, canSkip) {
+  skipWait = false;
+  document.getElementById('loadingMsg').textContent = msg || '等待 AI 中...';
+  document.getElementById('skipBtn').style.display = canSkip !== false ? 'block' : 'none';
+  document.getElementById('loadingOverlay').style.display = 'flex';
+}
+function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+function skipLoading() { skipWait = true; hideLoading(); }
+
+// ═══════════════════════════════════════════
+// ═══ NAVIGATION ══════════════════════════
+// ═══════════════════════════════════════════
+function showStep(n) {
+  document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById('step'+n).classList.add('active');
+  currentStep = n;
+  document.querySelectorAll('.progress-dot').forEach(function(d,i) {
+    d.classList.remove('active','done');
+    if (i < currentStep) d.classList.add('done');
+    if (i === currentStep) d.classList.add('active');
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function goBack() { showStep(currentStep - 1); }
+
+// ═══════════════════════════════════════════
+// ═══ STEP 0 → STEP 1 ════════════════════
+// ═══════════════════════════════════════════
+async function submitStep0() {
+  if (!val('decisionDesc')) { alert('请先描述你的决策。'); return; }
+
+  if (!step1Rendered && isConfigured() && serverOK) {
+    showLoading('AI 正在根据你的决策生成定制表单...');
+    try {
+      var raw = await callAI([
+        { role: 'system', content: 'You generate JSON form configurations. Return ONLY valid JSON, no other text.' },
+        { role: 'user', content: buildStep1Prompt() }
+      ]);
+      hideLoading();
+      if (!skipWait && raw) {
+        var config = parseAIJson(raw);
+        if (config && config.fields) {
+          // Save dynamic examples for Steps 2, 3
+          if (config.option_examples) aiExamples.option = config.option_examples;
+          if (config.step3_examples) aiExamples.step3 = config.step3_examples;
+          if (config.kv_suggestions) aiExamples.kv = config.kv_suggestions;
+          window._step1Schema = config;
+          renderStep1Dynamic(config);
+          applyAIExamples();
+          step1Rendered = true;
+          Sessions.save();
+          showStep(1);
+          return;
+        }
+      }
+    } catch(e) {
+      hideLoading();
+      console.error('Step1 AI 错误:', e);
+    }
+  }
+
+  if (!step1Rendered) {
+    renderStep1Static(isConfigured() ? null : '在上方配置 AI 服务商以启用智能表单生成。');
+    step1Rendered = true;
+  }
+  Sessions.save();
+  showStep(1);
+}
+
+function buildStep1Prompt() {
+  return 'The user is making this decision:\n\n"' + val('decisionDesc') + '"\n\n' +
+    'Generate a JSON object with:\n' +
+    '1. Form fields to gather context about the user\n' +
+    '2. Dynamic examples and suggestions tailored to THIS SPECIFIC decision type\n\n' +
+    'Return this EXACT JSON structure:\n' +
+    '{\n' +
+    '  "title": "About You — [contextual title]",\n' +
+    '  "subtitle": "Brief explanation of what context is needed",\n' +
+    '  "fields": [\n' +
+    '    { "id": "snake_case", "label": "Label", "type": "text|textarea|number|select", "placeholder": "specific example input...", "hint": "why this matters", "required": true/false }\n' +
+    '  ],\n' +
+    '  "suggested_traits": [\n' +
+    '    { "name": "Trait Name", "description": "why relevant" }\n' +
+    '  ],\n' +
+    '  "kv_suggestions": ["Suggested Detail 1", "Suggested Detail 2", "Suggested Detail 3"],\n' +
+    '  "option_examples": {\n' +
+    '    "name_placeholder": "e.g. [2-3 specific option name examples for this decision]",\n' +
+    '    "desc_placeholder": "Describe this option: [what info to include for this decision type]",\n' +
+    '    "fact_labels": ["relevant fact 1", "relevant fact 2", "relevant fact 3"]\n' +
+    '  },\n' +
+    '  "step3_examples": {\n' +
+    '    "goal_examples": "[3-4 example goals specific to this decision type, separated by ·]",\n' +
+    '    "concern_examples": ["specific concern 1", "specific concern 2", "specific concern 3", "specific concern 4"],\n' +
+    '    "value_examples": "[3-4 example value statements for this decision, separated by ·]"\n' +
+    '  }\n' +
+    '}\n\n' +
+    'IMPORTANT: ALL examples, placeholders, suggestions must be SPECIFIC to this decision type.\n' +
+    'If the user is choosing between jobs, examples should be about job comparison.\n' +
+    'If choosing between schools, examples should be about schools.\n' +
+    'If investing, examples should be about investment options.\n' +
+    'Never use generic placeholder text. Make every example feel tailored.\n\n' +
+    'Generate 4-8 fields, 3-5 traits, 3-5 kv suggestions.\n' +
+    'Return ONLY the JSON object, no other text.';
+}
+
+// ═══════════════════════════════════════════
+// ═══ DYNAMIC STEP 1 ═════════════════════
+// ═══════════════════════════════════════════
+function renderStep1Dynamic(config) {
+  var c = document.getElementById('step1Content');
+  var h = '';
+  h += '<h2>' + (config.title || '关于你') + '</h2>';
+  h += '<p class="sub">' + (config.subtitle || '为分析提供背景信息。') + '</p>';
+  h += '<div class="ai-badge">表单字段由 AI 根据你的决策生成</div>';
+
+  (config.fields || []).forEach(function(f) {
+    h += '<div class="field">';
+    h += '<label>' + f.label + (f.required ? ' <span class="req">*</span>' : '') + '</label>';
+    if (f.hint) h += '<p class="hint">' + f.hint + '</p>';
+    if (f.type === 'textarea') {
+      h += '<textarea class="dyn-field" data-id="' + f.id + '" placeholder="' + (f.placeholder||'') + '"></textarea>';
+    } else if (f.type === 'select' && f.options) {
+      h += '<select class="dyn-field" data-id="' + f.id + '"><option value="">Select...</option>';
+      f.options.forEach(function(o) {
+        var val = (typeof o === 'object' && o !== null) ? (o.value || o.label || o.name || JSON.stringify(o)) : String(o);
+        var lbl = (typeof o === 'object' && o !== null) ? (o.label || o.value || o.name || JSON.stringify(o)) : String(o);
+        h += '<option value="' + val + '">' + lbl + '</option>';
+      });
+      h += '</select>';
+    } else if (f.type === 'number') {
+      h += '<input type="number" class="dyn-field" data-id="' + f.id + '" placeholder="' + (f.placeholder||'') + '">';
+    } else {
+      h += '<input type="text" class="dyn-field" data-id="' + f.id + '" placeholder="' + (f.placeholder||'') + '">';
+    }
+    h += '</div>';
+  });
+
+  h += '<div class="divider"></div>';
+  h += '<p style="font-size:14px;color:var(--text2);margin-bottom:10px;font-weight:500">附加背景:</p>';
+  h += '<div id="kvSuggestions" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>';
+  h += '<div id="kvContainer"></div>';
+  h += '<button class="btn-add" onclick="addKV()" style="margin-top:8px;padding:12px;font-size:14px">+ 添加细节</button>';
+  h += '<div class="btn-row">';
+  h += '  <button class="btn btn-secondary" onclick="goBack()">&larr; 返回</button>';
+  h += '  <button class="btn btn-primary" onclick="submitStep1()">下一步 &rarr;</button>';
+  h += '</div>';
+  c.innerHTML = h;
+
+  if (config.suggested_traits) suggestedTraits = config.suggested_traits;
+  if (config.kv_suggestions) renderKVSuggestions(config.kv_suggestions);
+}
+
+function renderStep1Static(notice) {
+  var c = document.getElementById('step1Content');
+  var h = '';
+  h += '<h2>关于你和你的情况</h2>';
+  h += '<p class="sub">提供关于你自己的背景信息。任何相关内容都可以写 — 没有硬性规则。</p>';
+  if (notice) h += '<div class="notice">' + notice + '</div>';
+
+  h += '<div class="field">';
+  h += '  <label>你的背景 <span class="req">*</span></label>';
+  h += '  <p class="examples">例如:"北大经济学大四,GPA 3.7" · "28 岁,银行从业 3 年"</p>';
+  h += '  <textarea class="dyn-field" data-id="background" placeholder="教育、经历、当前情况..."></textarea>';
+  h += '</div>';
+  h += '<div class="field">';
+  h += '  <label>约束条件</label>';
+  h += '  <p class="hint">预算、时间、地理、家庭、签证 — 任何限制你选择的因素。</p>';
+  h += '  <textarea class="dyn-field" data-id="constraints" placeholder="例如:预算 150 万元,家人希望我离家近..."></textarea>';
+  h += '</div>';
+
+  h += '<div class="divider"></div>';
+  h += '<p style="font-size:14px;color:var(--text2);margin-bottom:10px;font-weight:500">附加背景:</p>';
+  h += '<div id="kvSuggestions" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>';
+  h += '<div id="kvContainer"></div>';
+  h += '<button class="btn-add" onclick="addKV()" style="margin-top:8px;padding:12px;font-size:14px">+ 添加细节</button>';
+  h += '<div class="btn-row">';
+  h += '  <button class="btn btn-secondary" onclick="goBack()">&larr; 返回</button>';
+  h += '  <button class="btn btn-primary" onclick="submitStep1()">下一步 &rarr;</button>';
+  h += '</div>';
+  c.innerHTML = h;
+}
+
+// ═══════════════════════════════════════════
+// ═══ STEP 1 → STEP 2 ════════════════════
+// ═══════════════════════════════════════════
+async function submitStep1() {
+  if (optionCount === 0) {
+    var num = parseInt(document.getElementById('numOptions').value) || 3;
+    for (var i = 0; i < Math.max(2, Math.min(num, 8)); i++) addOption();
+  }
+  Sessions.save();
+  showStep(2);
+}
+
+// ═══════════════════════════════════════════
+// ═══ STEP 2 → STEP 3 ════════════════════
+// ═══════════════════════════════════════════
+async function submitStep2() {
+  var cards = document.querySelectorAll('.option-card');
+  if (cards.length < 2) { alert('至少添加 2 个备选。'); return; }
+
+  // Try AI-suggested traits
+  if (!step3PrePop && isConfigured() && serverOK) {
+    showLoading('AI 正在建议评估维度...');
+    try {
+      var optionsSummary = collectOptionsSummary();
+      var raw = await callAI([
+        { role:'system', content:'Return ONLY valid JSON.' },
+        { role:'user', content:'Decision: "' + val('decisionDesc') + '"\n\nOptions:\n' + optionsSummary +
+          '\n\nGenerate a JSON with suggested self-assessment traits and common concerns:\n' +
+          '{"suggested_traits":[{"name":"...","description":"..."}],"suggested_concerns":["..."]}\n' +
+          'Generate 3-5 traits and 3-5 concerns relevant to choosing between these specific options. Return ONLY JSON.' }
+      ]);
+      hideLoading();
+      if (!skipWait && raw) {
+        var config = parseAIJson(raw);
+        if (config) applyStep3Suggestions(config);
+      }
+    } catch(e) { hideLoading(); }
+  }
+
+  // Fallback: use traits from step1
+  if (!step3PrePop && suggestedTraits.length > 0) {
+    suggestedTraits.forEach(function(t) {
+      if (!traits.find(function(x) { return x.name === t.name; })) {
+        traits.push({ name:t.name, value:5, ai:true });
+      }
+    });
+    renderTraits();
+    step3PrePop = true;
+  }
+
+  Sessions.save();
+  showStep(3);
+}
+
+function collectOptionsSummary() {
+  var lines = [];
+  document.querySelectorAll('.option-card').forEach(function(card) {
+    var n = card.id.split('_')[1];
+    var name = val('opt'+n+'_name');
+    var desc = val('opt'+n+'_desc');
+    if (name) lines.push('- ' + name + (desc ? ': ' + desc.substring(0,150) : ''));
+  });
+  return lines.join('\n');
+}
+
+function applyStep3Suggestions(config) {
+  if (config.suggested_traits) {
+    config.suggested_traits.forEach(function(t) {
+      if (!traits.find(function(x) { return x.name === t.name; })) {
+        traits.push({ name:t.name, value:5, ai:true });
+      }
+    });
+    renderTraits();
+  }
+  if (config.suggested_concerns) {
+    config.suggested_concerns.forEach(function(c) {
+      if (concerns.indexOf(c) === -1) concerns.push(c);
+    });
+    renderConcerns();
+  }
+  step3PrePop = true;
+}
+
+// ═══════════════════════════════════════════
+// ═══ STEP 3 → OUTPUT ════════════════════
+// ═══════════════════════════════════════════
+function submitStep3() {
+  generateOutput();
+  showStep(4);
+
+  var btn = document.getElementById('pipelineBtn');
+  var hint = document.getElementById('pipelineHint');
+  if (isConfigured() && serverOK) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    hint.textContent = 'FRAMEWORK → ORACLE + ECHO → MODEL → DEVIL + SAGE → NEXUS → MIRROR';
+  } else {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    hint.textContent = '配置 AI 服务商并启动 server.py 后即可运行流水线。下方仍可导出 YAML。';
+  }
+}
+
+// ═══════════════════════════════════════════
+// ═══ PIPELINE STATE ═════════════════════
+// ═══════════════════════════════════════════
+var pipelineState = {};
+var frameworkApproveResolve = null;
+var pipelineRunning = false;
+var activityEntryCount = 0;
+var pipelineStartTime = null;
+
+// ═══════════════════════════════════════════
+// ═══ ACTIVITY LOG ═══════════════════════
+// ═══════════════════════════════════════════
+function toggleActivity() {
+  document.getElementById('activityPanel').classList.toggle('open');
+}
+
+function initActivity() {
+  activityEntryCount = 0;
+  pipelineStartTime = Date.now();
+  document.getElementById('activityLog').innerHTML = '';
+  document.getElementById('activityCount').textContent = '0';
+  document.getElementById('actStats').textContent = '';
+  var btn = document.getElementById('activityToggle');
+  btn.style.display = 'flex';
+  btn.classList.add('pulse');
+  document.getElementById('activityPanel').classList.add('open');
+}
+
+function logActivity(agent, status, summary, rawData) {
+  var log = document.getElementById('activityLog');
+  var now = new Date();
+  var time = now.toTimeString().substring(0, 8);
+  var elapsed = pipelineStartTime ? '+' + ((now - pipelineStartTime) / 1000).toFixed(1) + 's' : '';
+
+  var statusIcon = status === 'running' ? '\u25CB' : status === 'done' ? '✓' : status === 'error' ? '✗' : '→';
+  var agentColors = {
+    PIPELINE:'#94a3b8', FRAMEWORK:'#a78bfa', ORACLE:'#60a5fa', ECHO:'#f472b6',
+    MODEL:'#fbbf24', DEVIL:'#f87171', SAGE:'#34d399', NEXUS:'#818cf8', MIRROR:'#94a3b8'
+  };
+  var color = agentColors[agent] || '#94a3b8';
+  var statusColor = status === 'running' ? '#818cf8' : status === 'done' ? '#34d399' : status === 'error' ? '#f87171' : '#94a3b8';
+
+  // Update existing running entry for this agent
+  var existing = log.querySelector('.act-entry[data-agent="' + agent + '"].running');
+  if (existing && status !== 'running') {
+    existing.className = 'act-entry ' + status;
+    existing.querySelector('.act-status').innerHTML = '<span style="color:' + statusColor + '">' + statusIcon + ' ' + status + '</span>';
+    var sumEl = existing.querySelector('.act-summary');
+    if (sumEl && summary) sumEl.textContent = summary;
+    if (rawData && status === 'done') {
+      var rawStr = JSON.stringify(rawData, null, 2);
+      var det = document.createElement('details');
+      det.innerHTML = '<summary>raw output — ' + rawStr.length + ' 字</summary><div class="act-raw">' + escHtml(rawStr) + '</div>';
+      existing.appendChild(det);
+    }
+    updateActStats();
+    return;
+  }
+
+  // New entry
+  var entry = document.createElement('div');
+  entry.className = 'act-entry ' + status;
+  entry.setAttribute('data-agent', agent);
+
+  var html = '<div class="act-entry-head">' +
+    '<span class="act-agent" style="color:' + color + '">' + escHtml(agent) + '</span>' +
+    '<span class="act-time">' + time + ' ' + elapsed + '</span>' +
+    '</div>' +
+    '<span class="act-status" style="color:' + statusColor + '">' + statusIcon + ' ' + status + '</span>';
+  if (summary) html += '<div class="act-summary">' + escHtml(summary) + '</div>';
+  entry.innerHTML = html;
+
+  if (rawData && status === 'done') {
+    var rawStr2 = JSON.stringify(rawData, null, 2);
+    var det2 = document.createElement('details');
+    det2.innerHTML = '<summary>raw output — ' + rawStr2.length + ' 字</summary><div class="act-raw">' + escHtml(rawStr2) + '</div>';
+    entry.appendChild(det2);
+  }
+
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+
+  activityEntryCount++;
+  document.getElementById('activityCount').textContent = activityEntryCount;
+  updateActStats();
+}
+
+function logDivider(label) {
+  var log = document.getElementById('activityLog');
+  var hr = document.createElement('div');
+  hr.style.cssText = 'text-align:center;font-size:10px;color:#475569;margin:10px 0;text-transform:uppercase;letter-spacing:1px;font-weight:600';
+  hr.textContent = '\u2500\u2500 ' + label + ' \u2500\u2500';
+  log.appendChild(hr);
+  log.scrollTop = log.scrollHeight;
+}
+
+function updateActStats() {
+  if (!pipelineStartTime) return;
+  var elapsed = ((Date.now() - pipelineStartTime) / 1000).toFixed(0);
+  var doneCount = document.querySelectorAll('.act-entry.done').length;
+  document.getElementById('actStats').textContent = doneCount + ' completed · ' + elapsed + 's elapsed';
+}
+
+function finishActivity(totalCalls) {
+  var elapsed = pipelineStartTime ? ((Date.now() - pipelineStartTime) / 1000).toFixed(1) : '?';
+  logActivity('PIPELINE', 'done', '全部 ' + totalCalls + ' 次调用完成,耗时 ' + elapsed + 's');
+  document.getElementById('activityToggle').classList.remove('pulse');
+  updateActStats();
+}
+
+function collectAllData() {
+  var context = {};
+  document.querySelectorAll('#step1Content .dyn-field').forEach(function(el) {
+    if (el.dataset.id && el.value.trim()) context[el.dataset.id] = el.value.trim();
+  });
+  document.querySelectorAll('#kvContainer .kv-row').forEach(function(row) {
+    var inputs = row.querySelectorAll('input');
+    var k = inputs[0].value.trim(), v = inputs[1].value.trim();
+    if (k && v) context[k] = v;
+  });
+  var options = [];
+  document.querySelectorAll('.option-card').forEach(function(card) {
+    var n = card.id.split('_')[1];
+    var name = val('opt'+n+'_name');
+    if (!name) return;
+    var opt = { name:name, description:val('opt'+n+'_desc'), status:val('opt'+n+'_status'), deadline:val('opt'+n+'_deadline') };
+    var facts = {};
+    card.querySelectorAll('.kv-row').forEach(function(row) {
+      var inputs = row.querySelectorAll('input');
+      var k = inputs[0].value.trim(), v = inputs[1].value.trim();
+      if (k && v) facts[k] = v;
+    });
+    if (Object.keys(facts).length) opt.facts = facts;
+    options.push(opt);
+  });
+  return {
+    decision: val('decisionDesc'), deadline: val('deadline'), context: context,
+    options: options, goal: val('goal'), priorities: val('values'),
+    concerns: concerns,
+    traits: traits.map(function(t) { return {name:t.name, value:t.value}; }),
+    notes: val('extraNotes')
+  };
+}
+
+
+// ═══════════════════════════════════════════
+// ═══ SESSIONS (localStorage persistence) ═
+// ═══════════════════════════════════════════
+var Sessions = (function() {
+  var STORAGE_KEY = 'decisionEngine.sessions.v1';
+  var MAX_SESSIONS = 20;
+  var currentSessionId = null;
+
+  function _load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { sessions: {}, activeSessionId: null };
+      var d = JSON.parse(raw);
+      if (!d.sessions) d.sessions = {};
+      return d;
+    } catch(e) { return { sessions: {}, activeSessionId: null }; }
+  }
+  function _writeStore(d) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+    catch(e) { console.warn('Sessions 保存失败:', e); }
+  }
+  function _genId() { return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+  function _ago(ts) {
+    var s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return s + ' 秒前';
+    if (s < 3600) return Math.floor(s/60) + ' 分钟前';
+    if (s < 86400) return Math.floor(s/3600) + ' 小时前';
+    return Math.floor(s/86400) + ' 天前';
+  }
+
+  function _snapshot() {
+    var step1Values = {};
+    document.querySelectorAll('#step1Content .dyn-field').forEach(function(el) {
+      if (el.dataset.id) step1Values[el.dataset.id] = el.value;
+    });
+    var step1KV = [];
+    document.querySelectorAll('#kvContainer .kv-row').forEach(function(row) {
+      var inp = row.querySelectorAll('input');
+      if (inp.length >= 2) step1KV.push([inp[0].value, inp[1].value]);
+    });
+    var options = [];
+    document.querySelectorAll('.option-card').forEach(function(card) {
+      var n = card.id.split('_')[1];
+      var facts = [];
+      card.querySelectorAll('.kv-row').forEach(function(row) {
+        var inp = row.querySelectorAll('input');
+        if (inp.length >= 2) facts.push([inp[0].value, inp[1].value]);
+      });
+      options.push({
+        name: val('opt'+n+'_name'), desc: val('opt'+n+'_desc'),
+        status: val('opt'+n+'_status'), deadline: val('opt'+n+'_deadline'),
+        facts: facts
+      });
+    });
+    var step1Schema = window._step1Schema || null;
+    var pipeMarker = null;
+    if (pipelineState.framework) pipeMarker = 'framework';
+    if (pipelineState.oracle) pipeMarker = 'research';
+    if (pipelineState.sim_results) pipeMarker = 'simulate';
+    if (pipelineState.interpret) pipeMarker = 'interpret';
+    if (pipelineState.devil) pipeMarker = 'challenge';
+    if (pipelineState.nexus) pipeMarker = 'synthesis';
+    if (pipelineState.mirror) pipeMarker = 'complete';
+    return {
+      currentStep: currentStep,
+      decision: val('decisionDesc'), deadline: val('deadline'),
+      step1Schema: step1Schema, step1Values: step1Values, step1KV: step1KV,
+      options: options,
+      goal: val('goal'), values: val('values'), notes: val('extraNotes'),
+      concerns: concerns.slice(),
+      traits: traits.map(function(t) { return { name: t.name, value: t.value, ai: t.ai }; }),
+      aiExamples: aiExamples, suggestedTraits: suggestedTraits,
+      step1Rendered: step1Rendered, step3PrePop: step3PrePop,
+      pipelineState: pipelineState,
+      pipeMarker: pipeMarker
+    };
+  }
+
+  function save() {
+    var dec = val('decisionDesc');
+    if (!dec || dec.length < 4) return;
+    var d = _load();
+    if (!currentSessionId) {
+      currentSessionId = _genId();
+      d.sessions[currentSessionId] = { id: currentSessionId, created: Date.now() };
+    }
+    var sess = d.sessions[currentSessionId] || { id: currentSessionId, created: Date.now() };
+    sess.id = currentSessionId;
+    sess.title = dec.length > 60 ? dec.slice(0,57) + '...' : dec;
+    sess.updated = Date.now();
+    Object.assign(sess, _snapshot());
+    d.sessions[currentSessionId] = sess;
+    d.activeSessionId = currentSessionId;
+    var ids = Object.keys(d.sessions);
+    if (ids.length > MAX_SESSIONS) {
+      ids.sort(function(a,b) { return (d.sessions[a].updated||0) - (d.sessions[b].updated||0); });
+      var prune = ids.length - MAX_SESSIONS;
+      for (var i = 0; i < prune; i++) delete d.sessions[ids[i]];
+    }
+    _writeStore(d);
+    renderList();
+  }
+
+  function _resetUI() {
+    optionCount = 0;
+    concerns = []; traits = []; suggestedTraits = []; aiExamples = {};
+    step1Rendered = false; step3PrePop = false;
+    pipelineState = {}; window._step1Schema = null;
+    var ids = ['decisionDesc','deadline','goal','values','extraNotes'];
+    ids.forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
+    var clear = ['step1Content','optionsContainer','concernTags','traitContainer','pipelineCards','reportArea'];
+    clear.forEach(function(id) { var el = document.getElementById(id); if (el) el.innerHTML = ''; });
+    var btn = document.getElementById('pipelineBtn');
+    if (btn) { btn.textContent = '运行完整流水线(8 次 AI 调用)'; btn.disabled = false; }
+  }
+
+  function restore(id) {
+    var d = _load();
+    var sess = d.sessions[id];
+    if (!sess) { alert('未找到该决策'); return; }
+    _resetUI();
+    currentSessionId = id;
+    d.activeSessionId = id;
+    _writeStore(d);
+
+    var dd = document.getElementById('decisionDesc'); if (dd) dd.value = sess.decision || '';
+    var dl = document.getElementById('deadline'); if (dl) dl.value = sess.deadline || '';
+    aiExamples = sess.aiExamples || {};
+    suggestedTraits = sess.suggestedTraits || [];
+
+    if (sess.step1Schema) {
+      window._step1Schema = sess.step1Schema;
+      renderStep1Dynamic(sess.step1Schema);
+      step1Rendered = true;
+      Object.keys(sess.step1Values || {}).forEach(function(fid) {
+        var el = document.querySelector('#step1Content .dyn-field[data-id="'+fid+'"]');
+        if (el) el.value = sess.step1Values[fid];
+      });
+      (sess.step1KV || []).forEach(function(kv) {
+        if (typeof addKV === 'function') {
+          addKV();
+          var rows = document.querySelectorAll('#kvContainer .kv-row');
+          var row = rows[rows.length - 1];
+          if (row) {
+            var inp = row.querySelectorAll('input');
+            if (inp.length >= 2) { inp[0].value = kv[0]; inp[1].value = kv[1]; }
+          }
+        }
+      });
+    } else if (sess.step1Rendered) {
+      renderStep1Static(null);
+      step1Rendered = true;
+      Object.keys(sess.step1Values || {}).forEach(function(fid) {
+        var el = document.querySelector('#step1Content .dyn-field[data-id="'+fid+'"]');
+        if (el) el.value = sess.step1Values[fid];
+      });
+    }
+
+    (sess.options || []).forEach(function(opt) {
+      addOption();
+      var n = optionCount;
+      var setv = function(eid, v) { var el = document.getElementById(eid); if (el) el.value = v || ''; };
+      setv('opt'+n+'_name', opt.name);
+      setv('opt'+n+'_desc', opt.desc);
+      setv('opt'+n+'_status', opt.status);
+      setv('opt'+n+'_deadline', opt.deadline);
+      (opt.facts || []).forEach(function(kv) {
+        if (typeof addFact === 'function') {
+          addFact(n);
+          var rows = document.querySelectorAll('#opt_'+n+' .kv-row');
+          var row = rows[rows.length - 1];
+          if (row) {
+            var inp = row.querySelectorAll('input');
+            if (inp.length >= 2) { inp[0].value = kv[0]; inp[1].value = kv[1]; }
+          }
+        }
+      });
+    });
+
+    var goalEl = document.getElementById('goal'); if (goalEl) goalEl.value = sess.goal || '';
+    var valEl = document.getElementById('values'); if (valEl) valEl.value = sess.values || '';
+    var notesEl = document.getElementById('extraNotes'); if (notesEl) notesEl.value = sess.notes || '';
+    concerns = (sess.concerns || []).slice();
+    if (typeof renderConcerns === 'function') renderConcerns();
+    traits = (sess.traits || []).map(function(t) { return { name: t.name, value: t.value, ai: t.ai }; });
+    if (typeof renderTraits === 'function') renderTraits();
+    step3PrePop = !!sess.step3PrePop;
+
+    pipelineState = sess.pipelineState || {};
+
+    showStep(sess.currentStep || 0);
+    renderList();
+  }
+
+  function startNew() {
+    var d = _load();
+    d.activeSessionId = null;
+    _writeStore(d);
+    currentSessionId = null;
+    _resetUI();
+    showStep(0);
+    renderList();
+  }
+
+  function del(id) {
+    if (!confirm('确定删除这个保存的决策吗?')) return;
+    var d = _load();
+    delete d.sessions[id];
+    if (d.activeSessionId === id) { d.activeSessionId = null; currentSessionId = null; }
+    _writeStore(d);
+    renderList();
+  }
+
+  function renderList() {
+    var d = _load();
+    var ids = Object.keys(d.sessions).sort(function(a,b) {
+      return (d.sessions[b].updated||0) - (d.sessions[a].updated||0);
+    });
+    var panel = document.getElementById('sessionsPanel');
+    var list = document.getElementById('sessionsList');
+    if (!panel || !list) return;
+    if (ids.length === 0) { panel.style.display = 'none'; return; }
+    panel.style.display = 'block';
+    var html = ids.map(function(id) {
+      var s = d.sessions[id];
+      var stepNames = ['决策','背景','备选','价值观','流水线'];
+      var stepLbl = stepNames[s.currentStep || 0] || ('Step ' + (s.currentStep||0));
+      var pipeLbl = s.pipeMarker ? ' · 流水线:' + s.pipeMarker : '';
+      var active = (id === d.activeSessionId && id === currentSessionId);
+      return '<div class="session-row' + (active ? ' active' : '') + '" onclick="Sessions.restore(\''+id+'\')">' +
+        '<div class="session-main">' +
+        '  <div class="session-title">' + escHtml(s.title || '(无标题)') + '</div>' +
+        '  <div class="session-meta">Step ' + (s.currentStep||0) + ' / 4 · ' + stepLbl + pipeLbl + '</div>' +
+        '  <div class="session-progress">Updated ' + _ago(s.updated || s.created || Date.now()) + '</div>' +
+        '</div>' +
+        '<div class="session-actions">' +
+        '  <button onclick="event.stopPropagation();Sessions.restore(\''+id+'\')">继续</button>' +
+        '  <button class="danger" onclick="event.stopPropagation();Sessions.del(\''+id+'\')">删除</button>' +
+        '</div></div>';
+    }).join('');
+    list.innerHTML = html;
+  }
+
+  function init() { renderList(); }
+
+  return { save: save, restore: restore, startNew: startNew, del: del, renderList: renderList, init: init };
+})();
+
+// ═══════════════════════════════════════════
+// ═══ PIPELINE ENGINE ════════════════════
+// ═══════════════════════════════════════════
+async function runPipeline() {
+  if (pipelineRunning) return;
+  pipelineRunning = true;
+
+  var btn = document.getElementById('pipelineBtn');
+  btn.textContent = '流水线运行中...';
+  btn.disabled = true;
+  document.getElementById('pipelineCards').innerHTML = '';
+  document.getElementById('reportArea').innerHTML = '';
+
+  var allData = collectAllData();
+  // Preserve existing results on retry (resume from failure point)
+  var isResume = !!(pipelineState.framework);
+  if (!isResume) {
+    pipelineState = { allData: allData };
+  } else {
+    pipelineState.allData = allData;
+  }
+  initActivity();
+  if (isResume) {
+    logActivity('PIPELINE', 'info', '恢复流水线 — 跳过已完成的步骤...');
+  } else {
+    logActivity('PIPELINE', 'info', '开始 8 agent 决策流水线:' + allData.decision.substring(0, 80));
+  }
+  logActivity('PIPELINE', 'info', allData.options.length + ' 个备选 · ' + allData.concerns.length + ' 条担忧 · ' + allData.traits.length + ' 项特质');
+
+  try {
+    var fw, orc, ech, mod, dev, sag, nex, mir;
+    var t0;
+
+    // ── Step 1: FRAMEWORK ──
+    if (pipelineState.framework) {
+      fw = pipelineState.framework;
+      logDivider('第 1 步 — 框架(缓存)');
+      setStageStatus('framework', 'done');
+      logActivity('FRAMEWORK', 'done', '缓存 — ' + (fw.evaluation_dimensions||[]).length + ' 个维度,' + (fw.scenarios||[]).length + ' 个场景');
+      renderFrameworkCard(fw);
+    } else {
+      logDivider('第 1 步 — 生成框架');
+      setStageStatus('framework', 'running');
+      logActivity('FRAMEWORK', 'running', '生成评估维度、场景、结果路径、性格调整...');
+      t0 = Date.now();
+      var fwPrompt = buildFrameworkPrompt(allData);
+      var fwRaw = await callAI(fwPrompt.messages, fwPrompt.max_tokens);
+      fw = parseAIJson(fwRaw);
+      if (!fw || !fw.evaluation_dimensions) throw new Error('FRAMEWORK 返回了无效 JSON');
+      pipelineState.framework = fw; Sessions.save();
+      setStageStatus('framework', 'done', Date.now() - t0);
+      logActivity('FRAMEWORK', 'done',
+        (fw.evaluation_dimensions||[]).length + ' 个维度 · ' +
+        (fw.scenarios||[]).length + ' 个场景 · ' +
+        (fw.outcome_tracks||[]).length + ' 个路径 · ' +
+        (fw.forward_modules||[]).length + ' 个前瞻模块', fw);
+      renderFrameworkCard(fw);
+
+      logActivity('PIPELINE', 'info', '等待用户审核并批准框架...');
+      renderFrameworkReview(fw);
+      await waitForFrameworkApproval();
+      fw = pipelineState.framework;
+      logActivity('PIPELINE', 'done', '用户已批准框架,权重可能已调整。');
+    }
+
+    // ── Step 2+3: ORACLE + ECHO (parallel) ──
+    if (pipelineState.oracle && pipelineState.echo) {
+      orc = pipelineState.oracle;
+      ech = pipelineState.echo;
+      logDivider('第 2+3 步 — 研究(缓存)');
+      setStageStatus('research', 'done');
+      logActivity('ORACLE', 'done', '缓存 — ' + (orc.options||[]).length + ' 个备选已核实');
+      logActivity('ECHO', 'done', '缓存 — ' + (ech.options||[]).length + ' 个备选已分析');
+      renderResearchCards(orc, ech);
+    } else {
+      logDivider('第 2+3 步 — 研究(并行)');
+      setStageStatus('research', 'running');
+      logActivity('ORACLE', 'running', '正在核实官方数据,共 ' + allData.options.length + ' 个备选,跨 ' + (fw.evaluation_dimensions||[]).length + ' 个维度...');
+      logActivity('ECHO', 'running', '分析社区舆情、论坛、评论、社交媒体...');
+      t0 = Date.now();
+      var oraclePrompt = buildOraclePrompt(allData, fw);
+      var echoPrompt = buildEchoPrompt(allData, fw);
+      var results = await Promise.all([
+        callAI(oraclePrompt.messages, oraclePrompt.max_tokens),
+        callAI(echoPrompt.messages, echoPrompt.max_tokens)
+      ]);
+      orc = parseAIJson(results[0]) || {};
+      ech = parseAIJson(results[1]) || {};
+      pipelineState.oracle = orc; Sessions.save();
+      pipelineState.echo = ech; Sessions.save();
+      var avgConf = (orc.options||[]).reduce(function(s,o){return s+(o.data_confidence||0);},0) / Math.max((orc.options||[]).length,1);
+      logActivity('ORACLE', 'done',
+        (orc.options||[]).length + ' 个备选已核实 · avg confidence ' + avgConf.toFixed(2) +
+        (orc.cross_option_notes ? ' · ' + orc.cross_option_notes.length + ' 条交叉备注' : ''), orc);
+      logActivity('ECHO', 'done',
+        (ech.options||[]).length + ' 个备选已分析 · ' +
+        (ech.options||[]).map(function(o){return o.name+': '+o.overall_sentiment;}).join(', '), ech);
+      setStageStatus('research', 'done', Date.now() - t0);
+      renderResearchCards(orc, ech);
+    }
+
+    // ── 第 4 步:MODEL — 参数(LLM) -> 仿真(Python) -> 解读(LLM) ──
+    var sim_spec, sim_results, interpret;
+    if (pipelineState.sim_spec && pipelineState.sim_results && pipelineState.interpret) {
+      sim_spec = pipelineState.sim_spec;
+      sim_results = pipelineState.sim_results;
+      interpret = pipelineState.interpret;
+      logDivider('第 4 步 — 模型(缓存)');
+      setStageStatus('model', 'done');
+      logActivity('MODEL-PARAMS', 'done', '缓存 — ' + (sim_spec.outcomes||[]).length + ' 个结果');
+      logActivity('SIMULATE', 'done', 'Cached — top: ' + sim_results.ranking[0] + ',稳定性:' + sim_results.ranking_stability);
+      logActivity('MODEL-INTERPRET', 'done', '缓存 — ' + (interpret.conclusion_type||'?'));
+      renderModelCard(sim_spec, sim_results, interpret);
+    } else {
+      logDivider('第 4 步 — 量化模型(参数 → 仿真 → 解读)');
+      setStageStatus('model', 'running');
+      t0 = Date.now();
+
+      // 4a. MODEL-PARAMS — LLM emits sim_spec
+      logActivity('MODEL-PARAMS', 'running', 'LLM 正在编写仿真参数(先验、分布、权重)...');
+      var paramsPrompt = buildModelParamsPrompt(allData, fw, orc, ech);
+      var paramsRaw = await callAI(paramsPrompt.messages, paramsPrompt.max_tokens);
+      sim_spec = parseAIJson(paramsRaw);
+      if (!sim_spec || !sim_spec.outcomes) throw new Error('MODEL-PARAMS 返回了无效的 sim_spec');
+      pipelineState.sim_spec = sim_spec; Sessions.save();
+      logActivity('MODEL-PARAMS', 'done',
+        (sim_spec.options||[]).length + ' 个备选 × ' +
+        (sim_spec.scenarios||[]).length + ' 个场景 × ' +
+        (sim_spec.outcomes||[]).length + ' 个结果 · n=' + (sim_spec.n_iterations||10000), sim_spec);
+
+      // 4b. SIMULATE — deterministic Python Monte Carlo + sensitivity
+      logActivity('SIMULATE', 'running', '运行确定性蒙特卡洛(' + (sim_spec.n_iterations||10000) + ' 次迭代)+ Python 后端敏感性分析...');
+      var simResp = await fetch('/api/simulate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(sim_spec)
+      });
+      sim_results = await simResp.json();
+      if (!sim_results.ok) {
+        var errs = sim_results.errors ? sim_results.errors.join('; ') : (sim_results.error || 'unknown');
+        throw new Error('仿真失败:' + errs);
+      }
+      pipelineState.sim_results = sim_results; Sessions.save();
+      logActivity('SIMULATE', 'done',
+        '榜首:' + sim_results.ranking[0] +
+        ' · 差距:' + sim_results.top1_vs_top2_utility_gap_pct.toFixed(1) + '%' +
+        ' · 稳定性:' + sim_results.ranking_stability +
+        ' · 翻转:' + sim_results.rank_flip_count + '/' + sim_results.sensitivity.length +
+        ' · ' + sim_results.elapsed_sec + 's', sim_results);
+
+      // 4c. MODEL-INTERPRET — LLM reads real numbers and narrates
+      logActivity('MODEL-INTERPRET', 'running', 'LLM 正在读取真实蒙特卡洛输出并解读...');
+      var interpPrompt = buildModelInterpretPrompt(allData, fw, orc, ech, sim_spec, sim_results);
+      var interpRaw = await callAI(interpPrompt.messages, interpPrompt.max_tokens);
+      interpret = parseAIJson(interpRaw) || {};
+      pipelineState.interpret = interpret; Sessions.save();
+      logActivity('MODEL-INTERPRET', 'done',
+        (interpret.conclusion_type||'?') +
+        ' · ' + (interpret.what_drives_the_ranking||'').substring(0, 80), interpret);
+
+      setStageStatus('model', 'done', Date.now() - t0);
+      renderModelCard(sim_spec, sim_results, interpret);
+    }
+
+    // ── Step 5+6: DEVIL + SAGE (parallel) ──
+    if (pipelineState.devil && pipelineState.sage) {
+      dev = pipelineState.devil;
+      sag = pipelineState.sage;
+      logDivider('第 5+6 步 — 挑战与预测(缓存)');
+      setStageStatus('challenge', 'done');
+      logActivity('DEVIL', 'done', '缓存 — ' + (dev.challenges||[]).length + ' 条挑战');
+      logActivity('SAGE', 'done', '缓存 — ' + (sag.modules||[]).length + ' 个模块已评分');
+      renderChallengeCards(dev, sag);
+    } else {
+      logDivider('第 5+6 步 — 挑战与预测(并行)');
+      setStageStatus('challenge', 'running');
+      logActivity('DEVIL', 'running', '挑战 #1 备选,为末位辩护,检查偏见...');
+      logActivity('SAGE', 'running', '评分:' + (fw.forward_modules||[]).length + ' 个前瞻模块...');
+      t0 = Date.now();
+      var devilPrompt = buildDevilPrompt(allData, fw, orc, ech, sim_spec, sim_results, interpret);
+      var sagePrompt = buildSagePrompt(allData, fw);
+      var results2 = await Promise.all([
+        callAI(devilPrompt.messages, devilPrompt.max_tokens),
+        callAI(sagePrompt.messages, sagePrompt.max_tokens)
+      ]);
+      dev = parseAIJson(results2[0]) || {};
+      sag = parseAIJson(results2[1]) || {};
+      pipelineState.devil = dev; Sessions.save();
+      pipelineState.sage = sag; Sessions.save();
+      var critCount = (dev.challenges||[]).filter(function(c){return c.severity==='critical';}).length;
+      logActivity('DEVIL', 'done',
+        (dev.challenges||[]).length + ' 条挑战 raised (' + critCount + ' 条 critical)' +
+        (dev.single_biggest_assumption ? ' · 关键假设:' + dev.single_biggest_assumption.substring(0,60) : ''), dev);
+      var avgScore = (sag.modules||[]).reduce(function(s,m){return s+(m.score||50);},0) / Math.max((sag.modules||[]).length,1);
+      logActivity('SAGE', 'done',
+        (sag.modules||[]).length + ' 个模块已评分 · avg score ' + avgScore.toFixed(0) + '/100' +
+        (sag.biggest_uncertainty ? ' · 关键不确定性:' + sag.biggest_uncertainty.substring(0,50) : ''), sag);
+      setStageStatus('challenge', 'done', Date.now() - t0);
+      renderChallengeCards(dev, sag);
+    }
+
+    // ── Step 7+8: NEXUS then MIRROR ──
+    if (pipelineState.nexus && pipelineState.mirror) {
+      nex = pipelineState.nexus;
+      mir = pipelineState.mirror;
+      logDivider('第 7+8 步 — 综合(缓存)');
+      setStageStatus('synthesis', 'done');
+      logActivity('NEXUS', 'done', '缓存 — ' + (nex.conclusion_type||'?'));
+      logActivity('MIRROR', 'done', '缓存');
+      renderSynthesisCards(nex, mir);
+    } else {
+      logDivider('第 7+8 步 — 综合');
+      setStageStatus('synthesis', 'running');
+      logActivity('NEXUS', 'running', '整合前 6 步输出 — 构建最终建议和报告...');
+      t0 = Date.now();
+      var nexusPrompt = buildNexusPrompt(allData, fw, orc, ech, sim_spec, sim_results, interpret, dev, sag);
+      var nexRaw = await callAI(nexusPrompt.messages, nexusPrompt.max_tokens);
+      nex = parseAIJson(nexRaw) || {};
+      pipelineState.nexus = nex; Sessions.save();
+      logActivity('NEXUS', 'done',
+        (nex.conclusion_type||'?') + ' · ' + (nex.confidence||'?') + ' 信心 · ' +
+        (nex.action_items||[]).length + ' 项行动 · 报告:' + ((nex.report_markdown||'').length) + ' 字', nex);
+
+      logActivity('MIRROR', 'running', '审查整条流水线质量 — 检查盲点...');
+      var mirrorPrompt = buildMirrorPrompt(allData, pipelineState);
+      var mirRaw = await callAI(mirrorPrompt.messages, mirrorPrompt.max_tokens);
+      mir = parseAIJson(mirRaw) || {};
+      pipelineState.mirror = mir; Sessions.save();
+      logActivity('MIRROR', 'done',
+        '整体信心:' + ((mir.overall_confidence||{}).level||'?') +
+        ' · 信息完整度:' + ((mir.information_completeness||{}).score||'?') + '/10' +
+        ' · 盲点:' + (mir.biggest_blind_spot||'none').substring(0,60), mir);
+      setStageStatus('synthesis', 'done', Date.now() - t0);
+      renderSynthesisCards(nex, mir);
+    }
+
+    // ── Final Report ──
+    var reportMd = nex.report_markdown || '';
+    if (mir.biggest_blind_spot) {
+      reportMd += '\n\n## 流程审查\n\n';
+      reportMd += '**信息完整度**:' + ((mir.information_completeness || {}).score || '?') + '/10 — ' + ((mir.information_completeness || {}).assessment || '') + '\n\n';
+      reportMd += '**框架质量**:' + ((mir.framework_quality || {}).score || '?') + '/10 — ' + ((mir.framework_quality || {}).assessment || '') + '\n\n';
+      reportMd += '**最大盲点**:' + mir.biggest_blind_spot + '\n\n';
+      reportMd += '**最弱环节**:' + (mir.weakest_link || '') + '\n\n';
+      reportMd += '**整体信心**:' + ((mir.overall_confidence || {}).level || '?') + ':' + ((mir.overall_confidence || {}).justification || '') + '\n\n';
+      if (mir.user_should_verify && mir.user_should_verify.length) {
+        reportMd += '**决策前需核实**:\n';
+        mir.user_should_verify.forEach(function(v) { reportMd += '- ' + v + '\n'; });
+      }
+    }
+    window._lastReportMd = reportMd;
+    var reportArea = document.getElementById('reportArea');
+    reportArea.innerHTML = renderMarkdown(reportMd) +
+      '<div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap">' +
+      '<button class="btn btn-primary" onclick="downloadReport()">⬇ 下载报告 (.md)</button>' +
+      '<button class="btn btn-secondary" onclick="copyReport()">复制 Markdown</button>' +
+      '</div>';
+
+    logDivider('流水线完成');
+    finishActivity(8);
+    btn.textContent = '重新运行';
+    btn.disabled = false;
+
+  } catch(e) {
+    var currentStage = ['framework','research','model','challenge','synthesis'].find(function(s) {
+      var el = document.getElementById('ps_' + s);
+      return el && el.classList.contains('running');
+    });
+    if (currentStage) setStageStatus(currentStage, 'error');
+    logActivity(currentStage ? currentStage.toUpperCase() : 'PIPELINE', 'error', e.message);
+    addPipelineCard('error', '错误', 'pipeline-error', '<div class="pipeline-error">' + escHtml(e.message) + '</div>');
+    document.getElementById('activityToggle').classList.remove('pulse');
+    btn.textContent = '重试';
+    btn.disabled = false;
+  }
+
+  pipelineRunning = false;
+}
+
+// ═══════════════════════════════════════════
+// ═══ PIPELINE UI HELPERS ════════════════
+// ═══════════════════════════════════════════
+function setStageStatus(stage, status, ms) {
+  var el = document.getElementById('ps_' + stage);
+  if (!el) return;
+  el.className = 'pipeline-stage ' + status;
+  if (status === 'done') {
+    el.querySelector('.stage-icon').innerHTML = '✓';
+    if (ms) el.querySelector('.stage-time').textContent = (ms / 1000).toFixed(1) + 's';
+    // Mark connector before this stage as done
+    var stages = ['framework','research','model','challenge','synthesis'];
+    var idx = stages.indexOf(stage);
+    if (idx > 0) {
+      var conn = document.getElementById('pc_' + idx);
+      if (conn) conn.classList.add('done');
+    }
+  } else if (status === 'error') {
+    el.querySelector('.stage-icon').innerHTML = '✗';
+  } else if (status === 'running') {
+    el.querySelector('.stage-icon').innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div>';
+  }
+}
+
+function addPipelineCard(id, title, badgeClass, bodyHtml, startOpen) {
+  var container = document.getElementById('pipelineCards');
+  var card = document.createElement('div');
+  card.className = 'stage-card';
+  card.id = 'card_' + id;
+  var open = startOpen ? ' open' : '';
+  card.innerHTML =
+    '<div class="stage-card-header" onclick="toggleCard(\'' + id + '\')">' +
+    '  <div style="display:flex;align-items:center;gap:10px">' +
+    '    <span class="agent-badge ' + badgeClass + '">' + title + '</span>' +
+    '  </div>' +
+    '  <span class="stage-card-toggle" id="ct_' + id + '">' + (startOpen ? '▲' : '▼') + '</span>' +
+    '</div>' +
+    '<div class="stage-card-body' + open + '" id="cb_' + id + '">' + bodyHtml + '</div>';
+  container.appendChild(card);
+  if (startOpen) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function toggleCard(id) {
+  var body = document.getElementById('cb_' + id);
+  var toggle = document.getElementById('ct_' + id);
+  if (body.classList.contains('open')) {
+    body.classList.remove('open');
+    toggle.textContent = '▼';
+  } else {
+    body.classList.add('open');
+    toggle.textContent = '▲';
+  }
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function downloadReport() {
+  var md = window._lastReportMd || '';
+  if (!md) { alert('还没有可下载的报告。'); return; }
+  var dec = (val('decisionDesc') || 'decision').toLowerCase()
+    .replace(/[^a-z0-9一-龥]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  var ts = new Date().toISOString().slice(0, 10);
+  var filename = 'decision-report-' + (dec || 'report') + '-' + ts + '.md';
+  var blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+
+function copyReport() {
+  var md = window._lastReportMd || '';
+  if (!md) { alert('还没有可下载的报告。'); return; }
+  navigator.clipboard.writeText(md).then(function() {
+    alert('报告 Markdown 已复制到剪贴板。');
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = md; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); alert('已复制。'); }
+    catch(e) { alert('复制失败 — 请手动选中并复制。'); }
+    document.body.removeChild(ta);
+  });
+}
+
+// ═══════════════════════════════════════════
+// ═══ FRAMEWORK REVIEW ═══════════════════
+// ═══════════════════════════════════════════
+function renderFrameworkCard(fw) {
+  var dims = (fw.evaluation_dimensions || []).map(function(d) {
+    return '<tr><td style="font-weight:600">' + escHtml(d.name) + '</td><td>' + (d.weight * 100).toFixed(0) + '%</td><td style="color:var(--text2);font-size:13px">' + escHtml(d.description || '') + '</td></tr>';
+  }).join('');
+  var scens = (fw.scenarios || []).map(function(s) {
+    return '<span class="fw-scenario-chip"><span class="prob">' + (s.probability * 100).toFixed(0) + '%</span> ' + escHtml(s.name) + '</span>';
+  }).join('');
+  var tracks = (fw.outcome_tracks || []).map(function(t) { return '<li>' + escHtml(t.name) + ' — <span style="color:var(--text2)">' + escHtml(t.description || '') + '</span></li>'; }).join('');
+  var fwd = (fw.forward_modules || []).map(function(m) { return '<li>' + escHtml(m.name) + ' — <span style="color:var(--text2)">' + escHtml(m.description || '') + '</span></li>'; }).join('');
+
+  var html = '<div style="margin-bottom:12px">' +
+    '<strong>决策类型:</strong> ' + escHtml(fw.decision_type || '') + '</div>' +
+    '<table class="mini-table"><tr><th>Dimension</th><th>Weight</th><th>Description</th></tr>' + dims + '</table>' +
+    '<div style="margin:12px 0"><strong>场景:</strong><div style="margin-top:6px">' + scens + '</div></div>' +
+    '<div style="margin:12px 0"><strong>结果路径:</strong><ul style="margin:6px 0 0 20px">' + tracks + '</ul></div>' +
+    '<div style="margin:12px 0"><strong>前瞻模块:</strong><ul style="margin:6px 0 0 20px">' + fwd + '</ul></div>';
+
+  addPipelineCard('framework', 'FRAMEWORK — 评估框架', 'framework', html, true);
+}
+
+function renderFrameworkReview(fw) {
+  var container = document.getElementById('pipelineCards');
+  var review = document.createElement('div');
+  review.className = 'fw-review';
+  review.id = 'frameworkReview';
+
+  var h = '<h3>审核与调整框架</h3>';
+  h += '<p style="font-size:13px;color:var(--text2);margin-bottom:16px">继续之前调整各维度的权重。后面所有步骤都基于此框架。</p>';
+
+  // Dimension weight sliders
+  h += '<div style="margin-bottom:16px">';
+  (fw.evaluation_dimensions || []).forEach(function(d, i) {
+    h += '<div class="fw-dim-row">' +
+      '<span class="dim-name">' + escHtml(d.name) + '</span>' +
+      '<input type="range" min="0" max="50" value="' + Math.round(d.weight * 100) + '" ' +
+      '  oninput="updateDimWeight(' + i + ', this.value)" id="fw_dim_' + i + '">' +
+      '<span class="weight-val" id="fw_dv_' + i + '">' + Math.round(d.weight * 100) + '%</span>' +
+      '</div>';
+  });
+  h += '</div>';
+
+  // Scenario probabilities
+  h += '<div style="margin-bottom:16px"><strong style="font-size:14px">场景概率:</strong><div style="margin-top:8px">';
+  (fw.scenarios || []).forEach(function(s, i) {
+    h += '<div class="fw-dim-row">' +
+      '<span class="dim-name">' + escHtml(s.name) + '</span>' +
+      '<input type="range" min="0" max="80" value="' + Math.round(s.probability * 100) + '" ' +
+      '  oninput="updateScenProb(' + i + ', this.value)" id="fw_sc_' + i + '">' +
+      '<span class="weight-val" id="fw_sv_' + i + '">' + Math.round(s.probability * 100) + '%</span>' +
+      '</div>';
+  });
+  h += '</div></div>';
+
+  h += '<button class="btn btn-primary" onclick="approveFramework()" style="width:100%;padding:14px;font-size:16px">' +
+    'Approve Framework & Continue Pipeline →</button>';
+
+  review.innerHTML = h;
+  container.appendChild(review);
+  review.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function updateDimWeight(idx, val) {
+  document.getElementById('fw_dv_' + idx).textContent = val + '%';
+}
+
+function updateScenProb(idx, val) {
+  document.getElementById('fw_sv_' + idx).textContent = val + '%';
+}
+
+function waitForFrameworkApproval() {
+  return new Promise(function(resolve) { frameworkApproveResolve = resolve; });
+}
+
+function approveFramework() {
+  var fw = pipelineState.framework;
+
+  // Read adjusted dimension weights and normalize
+  var dims = fw.evaluation_dimensions || [];
+  var totalW = 0;
+  dims.forEach(function(d, i) {
+    var slider = document.getElementById('fw_dim_' + i);
+    if (slider) d.weight = parseInt(slider.value) / 100;
+    totalW += d.weight;
+  });
+  if (totalW > 0) dims.forEach(function(d) { d.weight = d.weight / totalW; });
+
+  // Read adjusted scenario probabilities and normalize
+  var scens = fw.scenarios || [];
+  var totalP = 0;
+  scens.forEach(function(s, i) {
+    var slider = document.getElementById('fw_sc_' + i);
+    if (slider) s.probability = parseInt(slider.value) / 100;
+    totalP += s.probability;
+  });
+  if (totalP > 0) scens.forEach(function(s) { s.probability = s.probability / totalP; });
+
+  pipelineState.framework = fw; Sessions.save();
+
+  // Remove review panel
+  var rev = document.getElementById('frameworkReview');
+  if (rev) rev.remove();
+
+  // Update framework card with adjusted values
+  var cardBody = document.getElementById('cb_framework');
+  if (cardBody) {
+    var updatedDims = dims.map(function(d) {
+      return '<tr><td style="font-weight:600">' + escHtml(d.name) + '</td><td>' + (d.weight * 100).toFixed(0) + '%</td><td style="color:var(--text2);font-size:13px">' + escHtml(d.description || '') + '</td></tr>';
+    }).join('');
+    var tables = cardBody.querySelectorAll('.mini-table');
+    if (tables.length) tables[0].innerHTML = '<tr><th>Dimension</th><th>Weight</th><th>Description</th></tr>' + updatedDims;
+  }
+
+  Sessions.save();
+  if (frameworkApproveResolve) {
+    frameworkApproveResolve();
+    frameworkApproveResolve = null;
+  }
+}
+
+// ═══════════════════════════════════════════
+// ═══ STAGE CARD RENDERERS ═══════════════
+// ═══════════════════════════════════════════
+function renderResearchCards(oracle, echo) {
+  // ORACLE card
+  var oHtml = '';
+  (oracle.options || []).forEach(function(o) {
+    oHtml += '<div style="margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:10px">';
+    oHtml += '<div style="font-weight:700;margin-bottom:6px">' + escHtml(o.name) + ' <span style="font-size:12px;color:var(--text3)">confidence: ' + (o.data_confidence || '?') + '</span></div>';
+    if (o.key_strengths && o.key_strengths.length) {
+      oHtml += '<div style="color:var(--green);font-size:13px">✓ ' + o.key_strengths.map(escHtml).join(' · ') + '</div>';
+    }
+    if (o.key_risks && o.key_risks.length) {
+      oHtml += '<div style="color:var(--red);font-size:13px">✗ ' + o.key_risks.map(escHtml).join(' · ') + '</div>';
+    }
+    if (o.corrections && o.corrections.length) {
+      oHtml += '<div style="color:var(--amber);font-size:13px">⚠ ' + o.corrections.map(escHtml).join('; ') + '</div>';
+    }
+    // Dimension scores
+    if (o.dimension_scores) {
+      oHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">';
+      for (var dk in o.dimension_scores) {
+        var ds = o.dimension_scores[dk];
+        var score = typeof ds === 'object' ? ds.score : ds;
+        oHtml += '<span style="font-size:12px;padding:3px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px">' + escHtml(dk) + ': <strong>' + score + '</strong></span>';
+      }
+      oHtml += '</div>';
+    }
+    oHtml += '</div>';
+  });
+  if (oracle.cross_option_notes && oracle.cross_option_notes.length) {
+    oHtml += '<div style="font-size:13px;color:var(--text2);margin-top:6px">' + oracle.cross_option_notes.map(escHtml).join('<br>') + '</div>';
+  }
+  addPipelineCard('oracle', 'ORACLE — 官方研究', 'oracle', oHtml || '<p style="color:var(--text3)">没有返回结构化数据</p>');
+
+  // ECHO card
+  var eHtml = '';
+  (echo.options || []).forEach(function(o) {
+    var sentColor = o.overall_sentiment === 'positive' ? 'var(--green)' : o.overall_sentiment === 'negative' ? 'var(--red)' : 'var(--amber)';
+    eHtml += '<div style="margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:10px">';
+    eHtml += '<div style="font-weight:700;margin-bottom:6px">' + escHtml(o.name) + ' <span style="font-size:12px;color:' + sentColor + '">' + (o.overall_sentiment || '?') + '</span></div>';
+    if (o.praise && o.praise.length) {
+      eHtml += '<div style="font-size:13px;margin-bottom:4px"><strong style="color:var(--green)">Praise:</strong> ';
+      eHtml += o.praise.map(function(p) { return escHtml(typeof p === 'object' ? p.point : p); }).join(' · ');
+      eHtml += '</div>';
+    }
+    if (o.complaints && o.complaints.length) {
+      eHtml += '<div style="font-size:13px;margin-bottom:4px"><strong style="color:var(--red)">Complaints:</strong> ';
+      eHtml += o.complaints.map(function(p) { return escHtml(typeof p === 'object' ? p.point : p); }).join(' · ');
+      eHtml += '</div>';
+    }
+    if (o.red_flags && o.red_flags.length) {
+      eHtml += '<div style="font-size:13px;color:var(--red)">⚠ Red flags: ' + o.red_flags.map(escHtml).join('; ') + '</div>';
+    }
+    if (o.hidden_gems && o.hidden_gems.length) {
+      eHtml += '<div style="font-size:13px;color:var(--green)">\u2728 Hidden gems: ' + o.hidden_gems.map(escHtml).join('; ') + '</div>';
+    }
+    eHtml += '</div>';
+  });
+  if (echo.comparative_sentiment) {
+    eHtml += '<div style="font-size:13px;color:var(--text2);margin-top:6px;font-style:italic">' + escHtml(echo.comparative_sentiment) + '</div>';
+  }
+  addPipelineCard('echo', 'ECHO — 社区舆情', 'echo', eHtml || '<p style="color:var(--text3)">没有返回结构化数据</p>');
+}
+
+function renderModelCard(sim_spec, sim_results, interpret) {
+  var html = '';
+
+  html += '<div style="margin-bottom:12px;padding:10px 14px;background:var(--green-light);border-left:3px solid var(--green);border-radius:8px;font-size:13px;color:var(--text)">' +
+    '<strong>真实蒙特卡洛:</strong> ' + (sim_results.n_iterations || '?') + ' 次迭代 · ' +
+    (sim_results.elapsed_sec || 0) + 's 耗时 · ' +
+    '由 simulator.py 确定性计算(非 LLM 生成的统计)' +
+    '</div>';
+
+  var ranking = sim_results.ranking || [];
+  if (ranking.length) {
+    html += '<div style="margin:14px 0 8px"><strong>效用排名(均值 ± 标准差,P10 / P90)</strong></div>';
+    var maxMean = 0;
+    ranking.forEach(function(name) {
+      var u = ((sim_results.per_option || {})[name] || {}).utility || {};
+      if (u.mean > maxMean) maxMean = u.mean;
+    });
+    if (maxMean === 0) maxMean = 100;
+    var rankHtml = ranking.map(function(name, i) {
+      var u = ((sim_results.per_option || {})[name] || {}).utility || {};
+      var barW = Math.max((u.mean || 0) / maxMean * 200, 10);
+      var isTop = i === 0;
+      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
+        '<span style="min-width:24px;font-weight:700;color:' + (isTop ? 'var(--green)' : 'var(--text2)') + '">#' + (i+1) + '</span>' +
+        '<span style="min-width:140px;font-weight:600;font-size:14px">' + escHtml(name) + '</span>' +
+        '<div style="flex:1;background:var(--surface2);border-radius:4px;height:16px;overflow:hidden">' +
+        '  <div style="width:' + barW + 'px;max-width:100%;height:100%;background:' + (isTop ? 'var(--green)' : 'var(--accent)') + ';border-radius:4px"></div>' +
+        '</div>' +
+        '<span style="font-weight:700;min-width:60px;text-align:right">' + (u.mean||0).toFixed(1) + '</span>' +
+        '<span style="color:var(--text3);font-size:12px;min-width:140px;text-align:right">±' + (u.std||0).toFixed(1) +
+        ' · P10 ' + (u.p10||0).toFixed(0) + ' / P90 ' + (u.p90||0).toFixed(0) + '</span>' +
+        '</div>';
+    }).join('');
+    html += rankHtml;
+  }
+
+  if (sim_spec.scenarios && sim_spec.scenarios.length && ranking.length) {
+    html += '<div style="margin:16px 0 8px"><strong>每场景效用(均值)</strong></div>';
+    var thead = '<tr><th>Option</th>' + sim_spec.scenarios.map(function(s) {
+      return '<th>' + escHtml(s.id) + '<br><span style="font-weight:400;font-size:11px;color:var(--text3)">' + (s.probability * 100).toFixed(0) + '%</span></th>';
+    }).join('') + '</tr>';
+    var tbody = ranking.map(function(name, i) {
+      var perScen = ((sim_results.per_option || {})[name] || {}).per_scenario || {};
+      var cls = i === 0 ? ' class="rank-1"' : '';
+      return '<tr' + cls + '><td style="font-weight:600">' + escHtml(name) + '</td>' +
+        sim_spec.scenarios.map(function(s) {
+          var v = (perScen[s.id] || {}).mean;
+          return '<td>' + (v != null ? v.toFixed(1) : '—') + '</td>';
+        }).join('') + '</tr>';
+    }).join('');
+    html += '<table class="mini-table">' + thead + tbody + '</table>';
+  }
+
+  var flips = (sim_results.sensitivity || []).filter(function(s) { return s.rank_changed; });
+  if (flips.length) {
+    html += '<div style="margin:14px 0 6px"><strong>敏感性 — 会翻转排名的扰动</strong></div>';
+    html += '<ul style="margin:0 0 0 20px;font-size:13px;color:var(--text2)">';
+    flips.slice(0, 8).forEach(function(s) {
+      html += '<li>' + escHtml(s.perturbation) + ' → 新榜首:<strong>' + escHtml(s.new_top) + '</strong></li>';
+    });
+    if (flips.length > 8) html += '<li>… 还有 ' + (flips.length - 8) + ' 项</li>';
+    html += '</ul>';
+  } else {
+    html += '<div style="margin-top:12px;font-size:13px;color:var(--green)">✓ 排名在所有 ±20% 扰动下保持稳定</div>';
+  }
+
+  if (interpret && interpret.conclusion_type) {
+    var conColor = interpret.conclusion_type === 'strong_recommend' ? 'var(--green)' :
+                   interpret.conclusion_type === 'same_tier' ? 'var(--amber)' : 'var(--red)';
+    html += '<div style="margin-top:14px;padding:12px;background:var(--surface2);border-radius:10px">' +
+      '<strong>结论:</strong> <span style="color:' + conColor + ';font-weight:700">' + escHtml(interpret.conclusion_type) + '</span>' +
+      ' · 差距:' + (sim_results.top1_vs_top2_utility_gap_pct || 0).toFixed(1) + '%' +
+      ' · 稳定性:' + escHtml(sim_results.ranking_stability || '?') + '<br>' +
+      '<span style="font-size:13px;color:var(--text2);display:block;margin-top:6px"><strong>排名的驱动因素:</strong> ' + escHtml(interpret.what_drives_the_ranking || '') + '</span>' +
+      (interpret.most_sensitive_lever ? '<span style="font-size:13px;color:var(--text2);display:block;margin-top:4px"><strong>最敏感的杠杆:</strong> ' + escHtml(interpret.most_sensitive_lever) + '</span>' : '') +
+      '</div>';
+
+    if (interpret.concerns_about_priors && interpret.concerns_about_priors.length) {
+      html += '<div style="margin-top:8px;font-size:13px;color:var(--amber)"><strong>⚠ 对先验的担忧:</strong><ul style="margin:4px 0 0 20px">' +
+        interpret.concerns_about_priors.map(function(c) { return '<li>' + escHtml(c) + '</li>'; }).join('') + '</ul></div>';
+    }
+  }
+
+  addPipelineCard('model', 'MODEL — 真实蒙特卡洛 + 解读', 'model', html || '<p style="color:var(--text3)">没有返回结构化数据</p>');
+}
+
+function renderChallengeCards(devil, sage) {
+  // DEVIL card
+  var dHtml = '';
+  (devil.challenges || []).forEach(function(c) {
+    dHtml += '<div style="margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:10px">';
+    dHtml += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+    dHtml += '<span class="severity-badge ' + (c.severity || 'minor') + '">' + escHtml(c.severity || '?') + '</span>';
+    dHtml += '<span style="font-weight:700;font-size:14px">' + escHtml(c.id || '') + ': ' + escHtml(c.title || '') + '</span>';
+    dHtml += '</div>';
+    dHtml += '<div style="font-size:13px;margin-bottom:4px">' + escHtml(c.issue || '') + '</div>';
+    if (c.evidence) dHtml += '<div style="font-size:13px;color:var(--text2)"><strong>证据:</strong> ' + escHtml(c.evidence) + '</div>';
+    if (c.recommendation) dHtml += '<div style="font-size:13px;color:var(--accent)"><strong>建议修正:</strong> ' + escHtml(c.recommendation) + '</div>';
+    dHtml += '</div>';
+  });
+  if (devil.single_biggest_assumption) {
+    dHtml += '<div style="padding:12px;background:var(--amber-light);border-radius:10px;font-size:13px;margin-top:8px">' +
+      '<strong>⚠ 关键假设:</strong> ' + escHtml(devil.single_biggest_assumption) + '</div>';
+  }
+  addPipelineCard('devil', 'DEVIL — 对抗审查', 'devil', dHtml || '<p style="color:var(--text3)">没有提出挑战</p>');
+
+  // SAGE card
+  var sHtml = '';
+  (sage.modules || []).forEach(function(m) {
+    var scoreColor = m.score >= 70 ? 'var(--green)' : m.score <= 30 ? 'var(--red)' : 'var(--amber)';
+    sHtml += '<div style="margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:10px">';
+    sHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+    sHtml += '<span style="font-weight:700;font-size:14px">' + escHtml(m.name || '') + '</span>';
+    sHtml += '<span style="font-size:18px;font-weight:800;color:' + scoreColor + '">' + (m.score || '?') + '</span>';
+    sHtml += '</div>';
+    sHtml += '<div style="font-size:12px;color:var(--text3);margin-bottom:4px">' + escHtml(m.direction || '') + ' · ' + escHtml(m.confidence || '') + ' 信心 · ' + escHtml(m.time_horizon || '') + '</div>';
+    sHtml += '<div style="font-size:13px">' + escHtml(m.rationale || '') + '</div>';
+    if (m.per_option_impact) {
+      sHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+      for (var optK in m.per_option_impact) {
+        var impact = m.per_option_impact[optK];
+        var iColor = /tailwind/i.test(impact) ? 'var(--green)' : /headwind/i.test(impact) ? 'var(--red)' : 'var(--text2)';
+        sHtml += '<span style="font-size:12px;padding:3px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:' + iColor + '">' + escHtml(optK) + ': ' + escHtml(impact) + '</span>';
+      }
+      sHtml += '</div>';
+    }
+    sHtml += '</div>';
+  });
+  if (sage.biggest_uncertainty) {
+    sHtml += '<div style="font-size:13px;color:var(--text2);margin-top:8px;font-style:italic">' + escHtml(sage.biggest_uncertainty) + '</div>';
+  }
+  addPipelineCard('sage', 'SAGE — 趋势预测', 'sage', sHtml || '<p style="color:var(--text3)">没有预测数据</p>');
+}
+
+function renderSynthesisCards(nexus, mirror) {
+  // NEXUS summary card (full report goes to reportArea)
+  var nHtml = '';
+  if (nexus.headline) {
+    var typeColor = nexus.conclusion_type === 'strong_recommend' ? 'var(--green)' :
+                    nexus.conclusion_type === 'same_tier' ? 'var(--amber)' : 'var(--red)';
+    nHtml += '<div style="padding:16px;background:var(--surface2);border-radius:10px;margin-bottom:12px">';
+    nHtml += '<div style="font-size:13px;font-weight:700;color:' + typeColor + ';text-transform:uppercase;margin-bottom:4px">' + escHtml(nexus.conclusion_type || '') + ' — ' + escHtml(nexus.confidence || '') + ' 信心</div>';
+    nHtml += '<div style="font-size:16px;font-weight:600">' + escHtml(nexus.headline) + '</div>';
+    nHtml += '</div>';
+  }
+  // Adjusted ranking
+  if (nexus.adjusted_ranking) {
+    nHtml += '<div style="margin-bottom:12px"><strong>最终排名:</strong></div>';
+    nexus.adjusted_ranking.forEach(function(r) {
+      var isTop = r.rank === 1;
+      nHtml += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;font-size:14px">';
+      nHtml += '<span style="font-weight:700;color:' + (isTop ? 'var(--green)' : 'var(--text2)') + '">#' + r.rank + '</span>';
+      nHtml += '<span style="font-weight:600">' + escHtml(r.option) + '</span>';
+      nHtml += '<span style="color:var(--text3);font-size:13px">' + ((r.combined_score || 0) * 100).toFixed(1) + '</span>';
+      if (r.adjustment_note) nHtml += '<span style="font-size:12px;color:var(--accent)">' + escHtml(r.adjustment_note) + '</span>';
+      nHtml += '</div>';
+    });
+  }
+  // Action items
+  if (nexus.action_items && nexus.action_items.length) {
+    nHtml += '<div style="margin-top:12px"><strong>行动项:</strong></div>';
+    nexus.action_items.forEach(function(a) {
+      nHtml += '<div style="font-size:13px;margin-bottom:4px;padding-left:8px;border-left:3px solid var(--accent)">' +
+        '<strong>' + escHtml(a.action) + '</strong>' +
+        (a.deadline ? ' <span style="color:var(--red);font-size:12px">[' + escHtml(a.deadline) + ']</span>' : '') +
+        '</div>';
+    });
+  }
+  addPipelineCard('nexus', 'NEXUS — 最终建议', 'nexus', nHtml || '<p style="color:var(--text3)">没有建议</p>', true);
+
+  // MIRROR card
+  var mHtml = '';
+  if (mirror.overall_confidence) {
+    var confColor = mirror.overall_confidence.level === 'high' ? 'var(--green)' : mirror.overall_confidence.level === 'low' ? 'var(--red)' : 'var(--amber)';
+    mHtml += '<div style="font-size:14px;margin-bottom:10px">整体信心:<strong style="color:' + confColor + '">' + escHtml(mirror.overall_confidence.level || '') + '</strong> — ' + escHtml(mirror.overall_confidence.justification || '') + '</div>';
+  }
+  if (mirror.information_completeness) mHtml += '<div style="font-size:13px;margin-bottom:4px">信息完整度:<strong>' + (mirror.information_completeness.score || '?') + '/10</strong> — ' + escHtml(mirror.information_completeness.assessment || '') + '</div>';
+  if (mirror.framework_quality) mHtml += '<div style="font-size:13px;margin-bottom:4px">框架质量:<strong>' + (mirror.framework_quality.score || '?') + '/10</strong> — ' + escHtml(mirror.framework_quality.assessment || '') + '</div>';
+  if (mirror.biggest_blind_spot) mHtml += '<div style="font-size:13px;margin-bottom:4px;color:var(--amber)">⚠ 盲点:' + escHtml(mirror.biggest_blind_spot) + '</div>';
+  if (mirror.weakest_link) mHtml += '<div style="font-size:13px;margin-bottom:4px">最弱环节:' + escHtml(mirror.weakest_link) + '</div>';
+  if (mirror.user_should_verify && mirror.user_should_verify.length) {
+    mHtml += '<div style="font-size:13px;margin-top:8px"><strong>决策前需核实:</strong></div>';
+    mirror.user_should_verify.forEach(function(v) {
+      mHtml += '<div style="font-size:13px;padding-left:8px;border-left:2px solid var(--border);margin:3px 0">' + escHtml(v) + '</div>';
+    });
+  }
+  addPipelineCard('mirror', 'MIRROR — 过程审查', 'mirror', mHtml || '<p style="color:var(--text3)">没有审查数据</p>');
+}
+
+function renderMarkdown(md) {
+  if (!md) return '';
+  return md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^\|(.+)\|$/gm, function(match) {
+      var cells = match.split('|').filter(function(c) { return c.trim(); });
+      return '<tr>' + cells.map(function(c) { return '<td style="padding:6px 12px;border:1px solid var(--border)">' + c.trim() + '</td>'; }).join('') + '</tr>';
+    })
+    .replace(/(<tr>.*<\/tr>\n?)+/g, '<table style="border-collapse:collapse;width:100%;margin:12px 0;font-size:14px">$&</table>')
+    .replace(/^\- (.+)$/gm, '<li>$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+}
+
+// ═══════════════════════════════════════════
+// ═══ AI EXAMPLES HELPERS ═════════════════
+// ═══════════════════════════════════════════
+function applyAIExamples() {
+  // Update Step 3 example text
+  var s3 = aiExamples.step3;
+  if (s3) {
+    var goalEx = document.getElementById('goalExamples');
+    var valEx = document.getElementById('valueExamples');
+    if (goalEx && s3.goal_examples) goalEx.textContent = s3.goal_examples;
+    if (valEx && s3.value_examples) valEx.textContent = s3.value_examples;
+    // Concern suggestion chips
+    if (s3.concern_examples && s3.concern_examples.length) {
+      var cEl = document.getElementById('concernSuggestions');
+      if (cEl) {
+        cEl.innerHTML = '<span style="font-size:13px;color:var(--text3);margin-right:2px">Suggestions:</span>' +
+          s3.concern_examples.map(function(c) {
+            return '<span style="font-size:13px;padding:5px 12px;background:var(--accent-light);color:var(--accent);border-radius:8px;cursor:pointer;font-weight:500" onclick="addConcernDirect(this,\'' + c.replace(/'/g,"\\'") + '\')">' + c + '</span>';
+          }).join('');
+      }
+    }
+  }
+}
+
+function addConcernDirect(el, text) {
+  if (concerns.indexOf(text) === -1) {
+    concerns.push(text);
+    renderConcerns();
+  }
+  el.style.opacity = '0.4';
+  el.style.pointerEvents = 'none';
+}
+function reEnableConcernChips() {
+  var el = document.getElementById('concernSuggestions');
+  if (!el) return;
+  el.querySelectorAll('span[onclick]').forEach(function(chip) {
+    var m = chip.getAttribute('onclick').match(/addConcernDirect\(this,'(.+?)'\)/);
+    if (m && concerns.indexOf(m[1]) === -1) {
+      chip.style.opacity = '1';
+      chip.style.pointerEvents = 'auto';
+    }
+  });
+}
+
+function renderKVSuggestions(labels) {
+  var el = document.getElementById('kvSuggestions');
+  if (!el || !labels || !labels.length) return;
+  el.innerHTML = '<span style="font-size:13px;color:var(--text3);margin-right:2px">Quick add:</span>' +
+    labels.map(function(l) {
+      return '<span style="font-size:13px;padding:5px 12px;background:var(--accent-light);color:var(--accent);border-radius:8px;cursor:pointer;font-weight:500" onclick="addKVWithLabel(this,\'' + l.replace(/'/g,"\\'") + '\')">' + l + '</span>';
+    }).join('');
+}
+
+function addKVWithLabel(el, label) {
+  var c = document.getElementById('kvContainer');
+  var chipId = 'kvchip_' + label.replace(/[^a-zA-Z0-9]/g, '_');
+  el.id = chipId;
+  var row = document.createElement('div'); row.className = 'kv-row';
+  row.innerHTML = '<input type="text" value="' + label + '" readonly style="background:var(--surface2);font-weight:500">' +
+    '<input type="text" placeholder="输入' + label + '...">' +
+    '<button class="remove-btn" onclick="reEnableChip(\'' + chipId + '\');this.parentElement.remove()">×</button>';
+  c.appendChild(row);
+  row.querySelectorAll('input')[1].focus();
+  el.style.opacity = '0.4';
+  el.style.pointerEvents = 'none';
+}
+function reEnableChip(chipId) {
+  var chip = document.getElementById(chipId);
+  if (chip) { chip.style.opacity = '1'; chip.style.pointerEvents = 'auto'; }
+}
+
+// ═══════════════════════════════════════════
+// ═══ OPTIONS ═════════════════════════════
+// ═══════════════════════════════════════════
+function addOption() {
+  optionCount++;
+  var n = optionCount;
+  var oe = aiExamples.option || {};
+  var namePh = oe.name_placeholder || '例如:备选 A 名称';
+  var descPh = oe.desc_placeholder || '详细描述这个备选:是什么、花费、地点、时间线、优劣...';
+  var div = document.createElement('div');
+  div.className = 'option-card'; div.id = 'opt_' + n;
+  div.innerHTML =
+    '<div class="card-header">' +
+    '  <span class="card-num">备选 #' + n + '</span>' +
+    '  <button class="remove-btn" onclick="removeOption(' + n + ')">删除</button>' +
+    '</div>' +
+    '<div class="field">' +
+    '  <label>名称 <span class="req">*</span></label>' +
+    '  <input type="text" id="opt' + n + '_name" placeholder="' + namePh + '">' +
+    '</div>' +
+    '<div class="field">' +
+    '  <label>描述</label>' +
+    '  <p class="hint">' + descPh + '</p>' +
+    '  <textarea id="opt' + n + '_desc" placeholder="自由发挥 — 写得越详细,分析越好。"></textarea>' +
+    '</div>' +
+    '<div class="field">' +
+    '  <label>关键事实</label>' +
+    (oe.fact_labels ? '<div id="opt' + n + '_factSugg" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"><span style="font-size:13px;color:var(--text3)">Suggested:</span>' + oe.fact_labels.map(function(l) { return '<span style="font-size:13px;padding:4px 10px;background:var(--accent-light);color:var(--accent);border-radius:8px;cursor:pointer;font-weight:500" onclick="addFactWithLabel('+n+',this,\''+l.replace(/'/g,"\\'")+'\')">' + l + '</span>'; }).join('') + '</div>' : '') +
+    '  <div id="opt' + n + '_facts"></div>' +
+    '  <button class="btn-add" onclick="addFact(' + n + ')" style="padding:10px;font-size:13px;margin-top:4px">+ 添加事实</button>' +
+    '</div>' +
+    '<div class="field">' +
+    '  <label>状态</label>' +
+    '  <input type="text" id="opt' + n + '_status" placeholder="例如:已确认 / 待定 / 暂定">' +
+    '</div>' +
+    '<div class="field">' +
+    '  <label>截止日期</label>' +
+    '  <input type="text" id="opt' + n + '_deadline" placeholder="例如:4 月 15 日 / 无截止">' +
+    '</div>';
+  document.getElementById('optionsContainer').appendChild(div);
+}
+function removeOption(n) { var el = document.getElementById('opt_'+n); if(el) el.remove(); }
+function addFact(n) {
+  var c = document.getElementById('opt'+n+'_facts');
+  var oe = aiExamples.option || {};
+  var labels = oe.fact_labels || ['Tuition','Salary','Location'];
+  var row = document.createElement('div'); row.className = 'kv-row';
+  row.innerHTML =
+    '<input type="text" placeholder="e.g. ' + labels.slice(0,2).join(', ') + '">' +
+    '<input type="text" placeholder="输入值...">' +
+    '<button class="remove-btn" onclick="this.parentElement.remove()">×</button>';
+  c.appendChild(row);
+  row.querySelectorAll('input')[0].focus();
+}
+function addFactWithLabel(n, el, label) {
+  var c = document.getElementById('opt'+n+'_facts');
+  var chipId = 'factchip_' + n + '_' + label.replace(/[^a-zA-Z0-9]/g, '_');
+  el.id = chipId;
+  var row = document.createElement('div'); row.className = 'kv-row';
+  row.innerHTML = '<input type="text" value="' + label + '" readonly style="background:var(--surface2);font-weight:500">' +
+    '<input type="text" placeholder="输入' + label + '...">' +
+    '<button class="remove-btn" onclick="reEnableChip(\'' + chipId + '\');this.parentElement.remove()">×</button>';
+  c.appendChild(row);
+  row.querySelectorAll('input')[1].focus();
+  el.style.opacity = '0.4';
+  el.style.pointerEvents = 'none';
+}
+
+// ═══════════════════════════════════════════
+// ═══ KV PAIRS ════════════════════════════
+// ═══════════════════════════════════════════
+function addKV() {
+  var c = document.getElementById('kvContainer');
+  var row = document.createElement('div'); row.className = 'kv-row';
+  row.innerHTML =
+    '<input type="text" placeholder="项目(如 年龄、预算、地点)">' +
+    '<input type="text" placeholder="详细(如 25 岁、15 万元、上海)">' +
+    '<button class="remove-btn" onclick="this.parentElement.remove()">×</button>';
+  c.appendChild(row);
+  row.querySelectorAll('input')[0].focus();
+}
+
+// ═══════════════════════════════════════════
+// ═══ CONCERNS ════════════════════════════
+// ═══════════════════════════════════════════
+function addConcern() {
+  var input = document.getElementById('concernInput');
+  var v = input.value.trim();
+  if (!v) return;
+  concerns.push(v); input.value = '';
+  renderConcerns();
+}
+function removeConcern(i) { concerns.splice(i,1); renderConcerns(); reEnableConcernChips(); }
+function renderConcerns() {
+  document.getElementById('concernTags').innerHTML = concerns.map(function(c,i) {
+    return '<span class="tag">' + c + ' <span class="x" onclick="removeConcern(' + i + ')">×</span></span>';
+  }).join('');
+}
+document.getElementById('concernInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); addConcern(); }
+});
+
+// ═══════════════════════════════════════════
+// ═══ TRAITS ══════════════════════════════
+// ═══════════════════════════════════════════
+function addTrait() {
+  var input = document.getElementById('newTraitName');
+  var name = input.value.trim();
+  if (!name) return;
+  traits.push({ name:name, value:5 }); input.value = '';
+  renderTraits();
+}
+function removeTrait(i) { traits.splice(i,1); renderTraits(); }
+function renderTraits() {
+  document.getElementById('traitContainer').innerHTML = traits.map(function(t,i) {
+    var badge = t.ai ? ' <span style="font-size:12px;color:var(--accent);opacity:0.7;font-weight:500">AI suggested</span>' : '';
+    return '<div style="margin-bottom:18px;background:var(--surface);padding:16px;border-radius:12px;border:1.5px solid var(--border);box-shadow:var(--shadow)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+      '  <label style="font-size:15px;font-weight:600">' + t.name + badge + '</label>' +
+      '  <div style="display:flex;align-items:center;gap:14px">' +
+      '    <span style="font-size:20px;font-weight:700;color:var(--accent);min-width:28px;text-align:right" id="tv_' + i + '">' + t.value + '</span>' +
+      '    <button class="remove-btn" onclick="removeTrait(' + i + ')" style="font-size:12px">删除</button>' +
+      '  </div>' +
+      '</div>' +
+      '<input type="range" min="1" max="10" value="' + t.value + '" style="width:100%;accent-color:var(--accent)" ' +
+      '  oninput="traits[' + i + '].value=parseInt(this.value);document.getElementById(\'tv_' + i + '\').textContent=this.value">' +
+      '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:4px">' +
+      '  <span>1 — Low</span><span>10 — High</span>' +
+      '</div></div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// ═══ OUTPUT GENERATION ═══════════════════
+// ═══════════════════════════════════════════
+function val(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function esc(s) { return s.replace(/"/g, "'").replace(/\n/g, "\\n"); }
+
+function generateOutput() {
+  var y = '# AI 决策引擎 — Configuration\n# Generated by the web form\n\n';
+
+  y += 'decision:\n';
+  y += '  description: "' + esc(val('decisionDesc')) + '"\n';
+  y += '  deadline: "' + esc(val('deadline')) + '"\n\n';
+
+  y += 'context:\n';
+  document.querySelectorAll('#step1Content .dyn-field').forEach(function(el) {
+    var id = el.dataset.id, v = el.value.trim();
+    if (id && v) y += '  ' + id + ': "' + esc(v) + '"\n';
+  });
+  document.querySelectorAll('#kvContainer .kv-row').forEach(function(row) {
+    var inputs = row.querySelectorAll('input');
+    var k = inputs[0].value.trim(), v = inputs[1].value.trim();
+    if (k && v) y += '  ' + k.replace(/\s+/g,'_').toLowerCase() + ': "' + esc(v) + '"\n';
+  });
+  y += '\n';
+
+  y += 'options:\n';
+  document.querySelectorAll('.option-card').forEach(function(card) {
+    var n = card.id.split('_')[1];
+    var name = val('opt'+n+'_name');
+    if (!name) return;
+    y += '\n  - name: "' + esc(name) + '"\n';
+    var desc = val('opt'+n+'_desc');
+    if (desc) y += '    description: "' + esc(desc) + '"\n';
+    var factRows = card.querySelectorAll('.kv-row');
+    if (factRows.length) {
+      y += '    facts:\n';
+      factRows.forEach(function(row) {
+        var inputs = row.querySelectorAll('input');
+        var k = inputs[0].value.trim(), v = inputs[1].value.trim();
+        if (k && v) y += '      ' + k + ': "' + esc(v) + '"\n';
+      });
+    }
+    var st = val('opt'+n+'_status');
+    if (st) y += '    status: "' + esc(st) + '"\n';
+    var dl = val('opt'+n+'_deadline');
+    if (dl) y += '    deadline: "' + esc(dl) + '"\n';
+  });
+  y += '\n';
+
+  y += 'values:\n';
+  y += '  goal: "' + esc(val('goal')) + '"\n';
+  y += '  priorities: "' + esc(val('values')) + '"\n';
+  if (concerns.length) {
+    y += '  concerns:\n';
+    concerns.forEach(function(c) { y += '    - "' + esc(c) + '"\n'; });
+  }
+  y += '\n';
+
+  if (traits.length) {
+    y += 'self_assessment:\n';
+    traits.forEach(function(t) { y += '  ' + t.name.replace(/\s+/g,'_').toLowerCase() + ': ' + t.value + '\n'; });
+    y += '\n';
+  }
+
+  var extra = val('extraNotes');
+  if (extra) y += 'additional_notes: "' + esc(extra) + '"\n';
+
+  document.getElementById('outputYaml').textContent = y;
+}
+
+function copyText(id) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(function() {
+    var btn = event.target; var orig = btn.textContent;
+    btn.textContent = '已复制!';
+    setTimeout(function() { btn.textContent = orig; }, 1500);
+  });
+}
+function downloadFile() {
+  var text = document.getElementById('outputYaml').textContent;
+  var a = document.createElement('a');
+  a.href = 'data:text/yaml;charset=utf-8,' + encodeURIComponent(text);
+  a.download = 'my_decision.yaml';
+  a.click();
+}
+
+// ═══════════════════════════════════════════
+// ═══ INIT ════════════════════════════════
+// ═══════════════════════════════════════════
+selectProvider('openai');
+loadConfig();
+Sessions.init();
+checkServer().then(function() {
+  if (!serverOK) {
+    document.getElementById('configTitle').textContent += '(未检测到 server.py)';
+  }
+});
+// Open config if not configured
+if (!isConfigured()) {
+  document.getElementById('configBody').classList.add('open');
+  document.getElementById('configToggle').classList.add('open');
+}
+</script>
+</body>
+</html>

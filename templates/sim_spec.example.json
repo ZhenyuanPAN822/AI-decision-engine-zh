@@ -1,0 +1,101 @@
+{
+  "_comment": "Contract example: this is what MODEL-PARAMS (LLM) emits and what simulator.py consumes. The LLM picks dist names from a fixed menu (normal, lognormal, triangular, beta, uniform, bernoulli, categorical) and fills numeric params. The LLM never writes simulation code.",
+
+  "options": ["Option A", "Option B", "Option C"],
+
+  "scenarios": [
+    {"id": "baseline", "probability": 0.55, "description": "Most likely conditions"},
+    {"id": "downside", "probability": 0.30, "description": "Adverse conditions"},
+    {"id": "upside",   "probability": 0.15, "description": "Favorable conditions"}
+  ],
+
+  "outcomes": [
+    {
+      "id": "satisfaction_3y",
+      "name": "3-year satisfaction",
+      "direction": "higher_better",
+      "weight": 0.5,
+      "expected_range": [0, 100],
+      "per_option": {
+        "Option A": {
+          "baseline": {"dist": "triangular", "params": {"min": 55, "mode": 75, "max": 88}},
+          "downside": {"dist": "normal",     "params": {"mean": 50, "sd": 12}},
+          "upside":   {"dist": "normal",     "params": {"mean": 82, "sd": 6}}
+        },
+        "Option B": {
+          "baseline": {"dist": "normal",     "params": {"mean": 70, "sd": 8}},
+          "downside": {"dist": "normal",     "params": {"mean": 55, "sd": 10}},
+          "upside":   {"dist": "normal",     "params": {"mean": 78, "sd": 7}}
+        },
+        "Option C": {
+          "baseline": {"dist": "uniform",    "params": {"min": 45, "max": 80}},
+          "downside": {"dist": "uniform",    "params": {"min": 35, "max": 65}},
+          "upside":   {"dist": "uniform",    "params": {"min": 60, "max": 90}}
+        }
+      }
+    },
+    {
+      "id": "total_cost",
+      "name": "Total cost",
+      "direction": "lower_better",
+      "weight": 0.3,
+      "expected_range": [0, 500000],
+      "per_option": {
+        "Option A": {
+          "baseline": {"dist": "lognormal", "params": {"mean": 11.7, "sd": 0.25}},
+          "downside": {"dist": "lognormal", "params": {"mean": 11.9, "sd": 0.30}},
+          "upside":   {"dist": "lognormal", "params": {"mean": 11.5, "sd": 0.20}}
+        },
+        "Option B": {
+          "baseline": {"dist": "normal", "params": {"mean": 80000,  "sd": 15000}},
+          "downside": {"dist": "normal", "params": {"mean": 100000, "sd": 20000}},
+          "upside":   {"dist": "normal", "params": {"mean": 70000,  "sd": 12000}}
+        },
+        "Option C": {
+          "baseline": {"dist": "normal", "params": {"mean": 30000, "sd": 5000}},
+          "downside": {"dist": "normal", "params": {"mean": 40000, "sd": 8000}},
+          "upside":   {"dist": "normal", "params": {"mean": 25000, "sd": 4000}}
+        }
+      }
+    },
+    {
+      "id": "success_chance",
+      "name": "Success / desired outcome rate",
+      "direction": "higher_better",
+      "weight": 0.2,
+      "expected_range": [0, 1],
+      "per_option": {
+        "Option A": {
+          "baseline": {"dist": "beta", "params": {"alpha": 7, "beta": 3, "min": 0, "max": 1}},
+          "downside": {"dist": "beta", "params": {"alpha": 4, "beta": 6, "min": 0, "max": 1}},
+          "upside":   {"dist": "beta", "params": {"alpha": 9, "beta": 2, "min": 0, "max": 1}}
+        },
+        "Option B": {
+          "baseline": {"dist": "bernoulli", "params": {"p": 0.65}},
+          "downside": {"dist": "bernoulli", "params": {"p": 0.45}},
+          "upside":   {"dist": "bernoulli", "params": {"p": 0.80}}
+        },
+        "Option C": {
+          "baseline": {"dist": "categorical", "params": {"choices": [
+            {"value": 0.0, "p": 0.4},
+            {"value": 0.5, "p": 0.4},
+            {"value": 1.0, "p": 0.2}
+          ]}},
+          "downside": {"dist": "categorical", "params": {"choices": [
+            {"value": 0.0, "p": 0.6},
+            {"value": 0.5, "p": 0.3},
+            {"value": 1.0, "p": 0.1}
+          ]}},
+          "upside":   {"dist": "categorical", "params": {"choices": [
+            {"value": 0.0, "p": 0.2},
+            {"value": 0.5, "p": 0.5},
+            {"value": 1.0, "p": 0.3}
+          ]}}
+        }
+      }
+    }
+  ],
+
+  "n_iterations": 10000,
+  "seed": 42
+}
